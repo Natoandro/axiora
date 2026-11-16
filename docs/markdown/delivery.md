@@ -15,6 +15,8 @@ Milestones are ordered by risk and evidence, not estimated calendar dates. There
 
 Optional conversational tutoring follows evidence of need. It is not a gate for M1–M4.
 
+For actionable tasks and phase gates, follow the [phased implementation plan](../../IMPLEMENTATION_PLAN.md). It expands these milestones without changing their contracts.
+
 ## First implementation task
 
 Start M1 with the current JSON fixture and strict models for five activity types. Implement structural and semantic validation and a CLI that reports errors. Add hostile archive tests before building a general authoring pipeline. Then use that same validator behind Android import.

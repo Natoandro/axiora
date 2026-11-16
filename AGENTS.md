@@ -59,3 +59,4 @@ Summarize what changed, why, what passed, and what remains proposed or unverifie
 - Prefer `feat`, `fix`, `docs`, `test`, `refactor`, `build`, or `chore` to describe the change accurately.
 - Mark breaking changes with `!` after the type or scope and explain them in a `BREAKING CHANGE:` footer.
 - Keep each commit focused. Include related documentation and tests, and leave unrelated worktree changes out.
+- For a diff under 100 changed lines, choose a suitable Conventional Commit message without asking the user to approve the wording. This rule does not authorize a commit by itself; commit only when requested or otherwise authorized.
