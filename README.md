@@ -56,6 +56,12 @@ The Phase 1 JVM validator is built with the committed Gradle wrapper (Java 17 by
 
 `ktlintCheck` checks Kotlin source and Gradle Kotlin scripts across the project. `ktlintFormat` applies ktlint's formatting rules to those files; review the resulting diff before keeping the changes.
 
+Install a local pre-commit hook that checks staged Kotlin files by running this once per clone:
+
+```sh
+./gradlew addKtlintCheckGitPreCommitHook
+```
+
 Validation reads the unpacked fixture and does not rewrite it. The archive packer and Android app are still future phases.
 
 `check_docs.py` checks local Markdown/HTML links and fragments, the example's file hashes and documented semantic invariants. It is a documentation check, not a production package validator or mathematical proof checker.
