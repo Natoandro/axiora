@@ -2,7 +2,7 @@
 
 Axiora is a proposed offline learning environment for proof-based mathematics. It pairs a native Android study application with a separate content toolchain. This handbook develops the idea into a bounded, implementable design.
 
-**Status: design baseline 0.1 · 16 November 2026.** Requirements below are intended contracts, not claims about existing software. The only implemented parts are this documentation site, its generator and checks, and a small illustrative package fixture.
+**Status: design baseline 0.1 · 16 November 2026.** Requirements below are intended contracts, not claims about existing software. Implemented parts include this documentation site and its checks, an illustrative package fixture, the Kotlin content model and validator, and a deterministic package CLI. The headless study engine is in progress; Android and durable learner storage have not started.
 
 ## Start with the learning problem
 

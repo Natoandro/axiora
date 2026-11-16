@@ -4,7 +4,7 @@
 
 The first compiler should validate and package manually authored runtime JSON. It should not start by reading arbitrary PDFs. A reliable hand-authored unit gives the team a reference for what any later generator must produce.
 
-The compiler is a local CLI, sharing contract types and semantic validation with the Android reader. Python scripts in this repository build and check documentation; they are not the production compiler.
+The compiler is a local CLI, sharing contract types and semantic validation with the package archive reader. An Android reader does not exist yet; it is intended to reuse this validator. Python scripts in this repository build and check documentation; they are not the production compiler.
 
 ## The content pipeline
 

@@ -2,7 +2,7 @@
 
 ## Contract status
 
-This is the proposed **Axiora content schema 0.1.0**. It is a design contract with a JSON example and a limited fixture checker. There is no production parser or complete JSON Schema yet. Implementing a strict schema and sharing validation between compiler and reader is milestone M1.
+This is the proposed **Axiora content schema 0.1.0**. It is a design contract with a JSON example and an illustrative fixture. A strict Kotlin parser and shared validator are implemented for the compiler and package reader; the contract is checked in code rather than a standalone JSON Schema. This work completes milestone M1.
 
 The example uses runtime JSON directly. A high-level YAML authoring language is deferred until several manually authored units reveal what abstraction actually helps. This reduces the risk of designing a language before learning what teaching needs to express.
 

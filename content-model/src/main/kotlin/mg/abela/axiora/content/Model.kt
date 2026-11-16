@@ -81,6 +81,8 @@ data class Proof(
     override val sourceIds: List<String>,
     val objectiveId: String,
     val next: String,
+    val hintIds: Set<String> = emptySet(),
+    val rubricIds: Set<String> = emptySet(),
 ) : Activity
 
 data class Reflection(

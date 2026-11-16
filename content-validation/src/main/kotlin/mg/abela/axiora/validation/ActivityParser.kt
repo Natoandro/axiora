@@ -124,6 +124,7 @@ internal fun ValidationContext.parseActivity(
                 string(n["prompt_md"], file, "$path.prompt_md")
                 string(n["model_solution_md"], file, "$path.model_solution_md")
                 val hints = n["hints"]
+                val hintIds = mutableSetOf<String>()
                 if (hints == null ||
                     !hints.isArray
                 ) {
@@ -135,12 +136,13 @@ internal fun ValidationContext.parseActivity(
                         ->
                         val p = "$path.hints[$i]"
                         if (obj(h, file, p, setOf("id", "content_md"))) {
-                            id(h["id"], file, "$p.id")
+                            id(h["id"], file, "$p.id")?.let(hintIds::add)
                             string(h["content_md"], file, "$p.content_md")
                         }
                     }
                 }
                 val rubric = n["rubric"]
+                val rubricIds = mutableSetOf<String>()
                 if (rubric == null || !rubric.isArray ||
                     rubric.isEmpty
                 ) {
@@ -152,7 +154,7 @@ internal fun ValidationContext.parseActivity(
                         ->
                         val p = "$path.rubric[$i]"
                         if (obj(r, file, p, setOf("id", "criterion_md"))) {
-                            id(r["id"], file, "$p.id")
+                            id(r["id"], file, "$p.id")?.let(rubricIds::add)
                             string(r["criterion_md"], file, "$p.criterion_md")
                         }
                     }
@@ -163,7 +165,7 @@ internal fun ValidationContext.parseActivity(
                 ) {
                     error("AXC302", file, "$path.evaluator.type", "Proof evaluator must be self_review.")
                 }
-                Proof(sourceIds, id(n["objective_id"], file, "$path.objective_id") ?: "", next("next"))
+                Proof(sourceIds, id(n["objective_id"], file, "$path.objective_id") ?: "", next("next"), hintIds, rubricIds)
             } else {
                 null
             }

@@ -1,6 +1,6 @@
 # Axiora implementation plan
 
-**Status:** active execution plan · 16 November 2026. Phases 1 and 2 are complete and M1 is closed; see the [implementation status record](IMPLEMENTATION_STATUS.md). Phase 3 is next.
+**Status:** active execution plan · 16 November 2026. Phases 1 and 2 are complete and M1 is closed; Phase 3 is in progress. See the [implementation status record](IMPLEMENTATION_STATUS.md).
 
 This plan turns the [delivery milestones](docs/markdown/delivery.md) into reviewable work. The detailed [content contract](docs/markdown/content.md), [learner-state contract](docs/markdown/learner-state.md), and [decision log](docs/markdown/decisions.md) remain authoritative. A phase is complete only when its observable exit criteria pass; creating directories or screens is insufficient.
 
@@ -184,4 +184,4 @@ Work in this order:
 
 ## Next concrete change
 
-Start Phase 3 by creating `learning-core` with typed commands and deterministic session/activity transitions. Keep filesystem installation in Phase 4. Do not describe hashes as authenticated authorship.
+Continue Phase 3 by adding the evidence and review policy to `learning-core`, then run the fixture through correct, incorrect, retry, hinted, skipped, and self-review paths. Keep filesystem installation in Phase 4. Do not describe hashes as authenticated authorship.
