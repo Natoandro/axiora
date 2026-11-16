@@ -1,0 +1,147 @@
+{
+  "schema_version": "0.1.0",
+  "id": "axiora.ca.prime-vs-maximal",
+  "version": "0.1.0",
+  "title": "Prime versus maximal ideals",
+  "concept_ids": [
+    "axiora.ca.prime-ideal",
+    "axiora.ca.maximal-ideal"
+  ],
+  "requires_concepts": [
+    "axiora.ca.ideal",
+    "axiora.ca.quotient-ring",
+    "axiora.ca.integral-domain",
+    "axiora.ca.field"
+  ],
+  "objectives": [
+    {
+      "id": "distinguish",
+      "concept_id": "axiora.ca.prime-ideal",
+      "skill": "recognition",
+      "description": "Recognize that a prime ideal need not be maximal."
+    },
+    {
+      "id": "prove-implication",
+      "concept_id": "axiora.ca.maximal-ideal",
+      "skill": "proof_construction",
+      "description": "Prove that a maximal ideal is prime using quotient characterizations."
+    }
+  ],
+  "sources": [
+    {
+      "id": "original-exposition",
+      "kind": "original",
+      "citation": "Original exposition prepared for the Axiora design fixture.",
+      "locator": "This learning unit.",
+      "rights": "No third-party text reproduced; distribution license not yet selected."
+    }
+  ],
+  "entry": "predict",
+  "activities": {
+    "predict": {
+      "type": "choice",
+      "source_ids": [
+        "original-exposition"
+      ],
+      "prompt_md": "In a commutative ring with identity, is every prime ideal maximal?",
+      "options": [
+        {
+          "id": "yes",
+          "text_md": "Yes."
+        },
+        {
+          "id": "no",
+          "text_md": "No."
+        }
+      ],
+      "evaluator": {
+        "type": "exact_choice",
+        "expected": "no"
+      },
+      "feedback": {
+        "correct_md": "Correct. A prime ideal can have a quotient that is an integral domain without being a field.",
+        "incorrect_md": "The reverse implication is valid, but this implication fails. Examine the zero ideal in the integers."
+      },
+      "transitions": {
+        "correct": "boundary",
+        "incorrect": "remediation"
+      },
+      "evidence": {
+        "objective_id": "distinguish",
+        "assessment_family": "axiora.ca.prime-maximal.implication"
+      }
+    },
+    "boundary": {
+      "type": "exposition",
+      "source_ids": [
+        "original-exposition"
+      ],
+      "content_md": "The ideal $(0)$ in $\\mathbb{Z}$ is prime because $\\mathbb{Z}/(0)$ is an integral domain. It is not maximal because that quotient is not a field.",
+      "next": "proof"
+    },
+    "remediation": {
+      "type": "exposition",
+      "source_ids": [
+        "original-exposition"
+      ],
+      "content_md": "The integers have no zero divisors, so $(0)$ is prime. Yet $(0)$ is strictly contained in $(2)$, which is strictly contained in $\\mathbb{Z}$. Thus $(0)$ is not maximal. Being an integral domain is weaker than being a field.",
+      "next": "proof"
+    },
+    "proof": {
+      "type": "proof",
+      "source_ids": [
+        "original-exposition"
+      ],
+      "prompt_md": "Let $R$ be a commutative ring with identity and let $M$ be a maximal ideal. Prove that $M$ is prime.",
+      "hints": [
+        {
+          "id": "quotient",
+          "content_md": "Recall the characterizations of maximal and prime ideals in terms of quotient rings."
+        },
+        {
+          "id": "field-domain",
+          "content_md": "A quotient by a maximal ideal is a field. Why does every field have no zero divisors?"
+        }
+      ],
+      "model_solution_md": "Because $M$ is maximal, $R/M$ is a field. Every field is an integral domain: if $xy=0$ and $x$ is nonzero, multiplying by its inverse gives $y=0$. Therefore $R/M$ is an integral domain, and the quotient characterization implies that $M$ is prime. A direct ideal-theoretic proof is also valid.",
+      "rubric": [
+        {
+          "id": "assumptions",
+          "criterion_md": "Use a proper maximal ideal in a commutative ring with identity."
+        },
+        {
+          "id": "field",
+          "criterion_md": "Justify why the quotient is a field, or supply an appropriate direct argument."
+        },
+        {
+          "id": "domain",
+          "criterion_md": "Explain why the quotient has no zero divisors, or establish the prime condition directly."
+        },
+        {
+          "id": "conclusion",
+          "criterion_md": "Conclude that the ideal is prime without reversing an unsupported implication."
+        }
+      ],
+      "evaluator": {
+        "type": "self_review"
+      },
+      "objective_id": "prove-implication",
+      "next": "reflect"
+    },
+    "reflect": {
+      "type": "reflection",
+      "source_ids": [
+        "original-exposition"
+      ],
+      "prompt_md": "Which direction is valid? Explain why the converse fails. Record anything you are still unsure about.",
+      "next": "finish"
+    },
+    "finish": {
+      "type": "end",
+      "source_ids": [
+        "original-exposition"
+      ],
+      "summary_md": "You examined a distinction and attempted a proof. Completion does not establish independent mastery. Return later for a fresh example and another proof attempt."
+    }
+  }
+}

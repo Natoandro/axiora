@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "concepts": [
+    {
+      "id": "axiora.ca.prime-ideal",
+      "title": "Prime ideal",
+      "definition_md": "A proper ideal $P$ of $R$ is prime if $ab \\in P$ implies $a \\in P$ or $b \\in P$.",
+      "assumptions": "R is a commutative ring with identity.",
+      "relations": []
+    },
+    {
+      "id": "axiora.ca.maximal-ideal",
+      "title": "Maximal ideal",
+      "definition_md": "A proper ideal $M$ of $R$ is maximal if there is no ideal strictly between $M$ and $R$.",
+      "assumptions": "R is a commutative ring with identity.",
+      "relations": [
+        {
+          "type": "implies",
+          "target": "axiora.ca.prime-ideal"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": "0.1.0",
+  "package_id": "axiora.ca.first-slice",
+  "version": "0.1.0",
+  "title": "Prime and maximal ideals — design fixture",
+  "language": "en",
+  "license": "UNLICENSED",
+  "requires_capabilities": [
+    "activity.exposition.v1",
+    "activity.choice.v1",
+    "activity.proof.v1",
+    "activity.reflection.v1",
+    "activity.end.v1",
+    "evaluator.exact-choice.v1",
+    "evaluator.self-review.v1"
+  ],
+  "conventions": "All rings are commutative with identity. Prime and maximal ideals are proper. The zero ideal in the integers is the boundary example.",
+  "concept_files": [
+    "concepts/core.json"
+  ],
+  "units": [
+    {
+      "id": "axiora.ca.prime-vs-maximal",
+      "version": "0.1.0",
+      "path": "units/prime-vs-maximal.json"
+    }
+  ],
+  "entry_units": [
+    "axiora.ca.prime-vs-maximal"
+  ],
+  "review": {
+    "status": "draft",
+    "note": "Illustrative original content; no independent mathematical or pedagogical review has been recorded."
+  },
+  "files": [
+    {
+      "path": "concepts/core.json",
+      "bytes": 710,
+      "sha256": "5f63f30ea5e1a2c4180d33c619395411d23b5045fbb13b7ffc0b215b33d34b56"
+    },
+    {
+      "path": "units/prime-vs-maximal.json",
+      "bytes": 5013,
+      "sha256": "4dae72f7d09cb682d9658971f21c27f8c17f9f765fa6e0a469fb4044933d90bf"
+    }
+  ]
+}
