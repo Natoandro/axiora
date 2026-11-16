@@ -57,6 +57,34 @@ class MainTest {
         assertEquals("", out.toString())
     }
 
+    @Test fun `pack and inspect commands complete validated package loop`() {
+        val directory = Files.createTempDirectory("axiora-cli-package")
+        try {
+            val archive = directory.resolve("fixture.axp")
+            val packOut = ByteArrayOutputStream()
+            val packErr = ByteArrayOutputStream()
+            val packCode =
+                runCli(
+                    arrayOf("pack", fixture.toString(), "--output", archive.toString()),
+                    PrintStream(packOut),
+                    PrintStream(packErr),
+                )
+            assertEquals(0, packCode)
+            assertTrue(packOut.toString().contains("Packed axiora.ca.first-slice@0.1.0"))
+            assertEquals("", packErr.toString())
+
+            val inspectOut = ByteArrayOutputStream()
+            val inspectErr = ByteArrayOutputStream()
+            val inspectCode = runCli(arrayOf("inspect", archive.toString()), PrintStream(inspectOut), PrintStream(inspectErr))
+            assertEquals(0, inspectCode)
+            assertTrue(inspectOut.toString().contains("Valid package: axiora.ca.first-slice@0.1.0"))
+            assertTrue(Files.isRegularFile(directory.resolve("fixture.axp.report.json")))
+            assertEquals("", inspectErr.toString())
+        } finally {
+            Files.walk(directory).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) }
+        }
+    }
+
     private fun copyFixture(): Path {
         val target = Files.createTempDirectory("axiora-cli-fixture")
         Files.walk(fixture).use { paths ->

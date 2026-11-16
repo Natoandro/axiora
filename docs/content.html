@@ -125,6 +125,7 @@ units/prime-vs-maximal.json
 </tbody>
 </table></div>
 <p>The payload inventory lists every file except <code>manifest.json</code>; the manifest cannot hash itself. No undeclared archive entries are allowed. The manifest digest stored by the importer is calculated separately over its raw bytes. Each declared concept or unit path must appear in the payload inventory. Payload paths cannot be shared between two unit records.</p>
+<p>SHA-256 values detect accidental or malicious byte changes relative to the manifest. They do not authenticate the author, publisher, or review claims.</p>
 <p>Review status is one of <code>draft</code>, <code>mathematically_reviewed</code>, or <code>pilot_reviewed</code>. The latter two must include reviewer identity, date, scope, and evidence in the note or a future structured review record. Until publisher authentication exists, the app presents these as author claims. The fixture remains <code>draft</code>.</p>
 <h3 id="compatibility-and-limits">Compatibility and limits</h3>
 <p>The 0.1 reader accepts only schema <code>0.1.0</code>. Later readers may explicitly support multiple versions; do not assume minor versions are readable. Required capabilities are an allowlist; an unknown required capability rejects import.</p>

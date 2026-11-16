@@ -43,7 +43,7 @@ Python tooling is managed by uv through `pyproject.toml` and `uv.lock`, with Pyt
 uv run --locked python scripts/build_docs.py --check
 ```
 
-The Phase 1 JVM validator is built with the committed Gradle wrapper (Java 17 bytecode target; run Gradle with JDK 17 or newer):
+The JVM validator and package CLI are built with the committed Gradle wrapper (Java 17 bytecode target; run Gradle with JDK 17 or newer):
 
 ```sh
 ./gradlew ktlintCheck
@@ -52,6 +52,8 @@ The Phase 1 JVM validator is built with the committed Gradle wrapper (Java 17 by
 ./gradlew :compiler-cli:installDist
 ./compiler-cli/build/install/axiora/bin/axiora validate examples/prime-and-maximal
 ./compiler-cli/build/install/axiora/bin/axiora validate examples/prime-and-maximal --format json
+./compiler-cli/build/install/axiora/bin/axiora pack examples/prime-and-maximal --output build/prime-and-maximal.axp
+./compiler-cli/build/install/axiora/bin/axiora inspect build/prime-and-maximal.axp
 ```
 
 `ktlintCheck` checks Kotlin source and Gradle Kotlin scripts across the project. `ktlintFormat` applies ktlint's formatting rules to those files; review the resulting diff before keeping the changes.
@@ -62,7 +64,7 @@ Install a local pre-commit hook that checks staged Kotlin files by running this 
 ./gradlew addKtlintCheckGitPreCommitHook
 ```
 
-Validation reads the unpacked fixture and does not rewrite it. The archive packer and Android app are still future phases.
+Validation and packaging read the unpacked fixture without rewriting it. Packaging writes the `.axp` archive and an adjacent `.report.json`; use `--overwrite` to replace an existing archive. The Android app remains a future phase.
 
 `check_docs.py` checks local Markdown/HTML links and fragments, the example's file hashes and documented semantic invariants. It is a documentation check, not a production package validator or mathematical proof checker.
 

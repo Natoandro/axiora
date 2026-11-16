@@ -121,3 +121,15 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 **Tradeoff:** Presentation changes belong in the generator and shared assets. Source-only internal details are not separately maintained.
 
 **Reopen when:** A documentation requirement cannot be supported by the current generator without disproportionate complexity. Preserve one canonical source and offline reading.
+
+## ADR-011 â€” ZIP container for the first package reader
+
+**Status:** adopted for the current implementation; alternatives remain open.
+
+**Problem:** A course revision needs one offline-importable artifact, bounded payloads, a manifest inventory, and byte-integrity checks.
+
+**Decision:** Package separately named JSON payload files with a root manifest in a ZIP archive. Use ZIP STORE and deterministic metadata for the first reader. The compiler and reader reject unsafe archive paths and metadata before validating staged payloads.
+
+**Tradeoff:** ZIP adds path, metadata, duplicate-entry, and expansion checks. A single JSON envelope could remove archive handling for small packages. A compiler-generated SQLite package is also viable and avoids manual database authoring, but it makes the database schema and SQLite compatibility part of the content contract.
+
+**Reopen when:** Package scale and access patterns show that separate files provide little value, or when selective indexed reads justify a database package. Compare reader complexity and compatibility costs against the ZIP implementation before changing the contract. See [package container options](compiler.md#package-container-options).

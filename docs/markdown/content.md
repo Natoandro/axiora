@@ -48,6 +48,8 @@ All fields in the following table are required. Unknown fields are rejected in s
 
 The payload inventory lists every file except `manifest.json`; the manifest cannot hash itself. No undeclared archive entries are allowed. The manifest digest stored by the importer is calculated separately over its raw bytes. Each declared concept or unit path must appear in the payload inventory. Payload paths cannot be shared between two unit records.
 
+SHA-256 values detect accidental or malicious byte changes relative to the manifest. They do not authenticate the author, publisher, or review claims.
+
 Review status is one of `draft`, `mathematically_reviewed`, or `pilot_reviewed`. The latter two must include reviewer identity, date, scope, and evidence in the note or a future structured review record. Until publisher authentication exists, the app presents these as author claims. The fixture remains `draft`.
 
 ### Compatibility and limits
