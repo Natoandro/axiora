@@ -26,17 +26,41 @@ fun main(args: Array<String>) {
         System.err.println("Input directory does not exist: $root")
         exitProcess(2)
     }
-    val result = try { ContentValidator().validate(root) } catch (e: Exception) {
-        System.err.println("Validation could not read input: ${e.message ?: e.javaClass.simpleName}")
-        exitProcess(2)
-    }
+    val result =
+        try {
+            ContentValidator().validate(root)
+        } catch (e: Exception) {
+            System.err.println("Validation could not read input: ${e.message ?: e.javaClass.simpleName}")
+            exitProcess(2)
+        }
     if (format == "json") {
-        val json = ObjectMapper().writeValueAsString(mapOf("valid" to result.valid, "diagnostics" to result.diagnostics.map { d ->
-            buildMap<String, String> { put("code", d.code); put("severity", d.severity); put("file", d.file); put("path", d.path); put("message", d.message); d.suggestion?.let { put("suggestion", it) } }
-        }))
+        val json =
+            ObjectMapper().writeValueAsString(
+                mapOf(
+                    "valid" to result.valid,
+                    "diagnostics" to
+                        result.diagnostics.map { d ->
+                            buildMap<String, String> {
+                                put("code", d.code)
+                                put("severity", d.severity)
+                                put("file", d.file)
+                                put("path", d.path)
+                                put("message", d.message)
+                                d.suggestion?.let { put("suggestion", it) }
+                            }
+                        },
+                ),
+            )
         println(json)
-    } else if (result.diagnostics.isEmpty()) println("Valid content: $root")
-    else result.diagnostics.forEach { d -> println("${d.severity.uppercase()} ${d.code} ${d.file}:${d.path}: ${d.message}${d.suggestion?.let { " Suggestion: $it" } ?: ""}") }
+    } else if (result.diagnostics.isEmpty()) {
+        println("Valid content: $root")
+    } else {
+        result.diagnostics.forEach { d ->
+            println(
+                "${d.severity.uppercase()} ${d.code} ${d.file}:${d.path}: ${d.message}${d.suggestion?.let { " Suggestion: $it" } ?: ""}",
+            )
+        }
+    }
     exitProcess(if (result.valid) 0 else 1)
 }
 

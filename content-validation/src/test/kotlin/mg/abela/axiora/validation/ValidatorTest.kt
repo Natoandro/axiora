@@ -23,7 +23,17 @@ class ValidatorTest {
 
     @Test fun `unsupported schema is rejected`() {
         val root = copyFixture()
-        root.resolve("manifest.json").toFile().writeText(root.resolve("manifest.json").toFile().readText().replace("\"0.1.0\"", "\"0.2.0\""))
+        root
+            .resolve(
+                "manifest.json",
+            ).toFile()
+            .writeText(
+                root
+                    .resolve("manifest.json")
+                    .toFile()
+                    .readText()
+                    .replace("\"0.1.0\"", "\"0.2.0\""),
+            )
         val result = ContentValidator().validate(root)
         assertFalse(result.valid)
         assertTrue(result.diagnostics.any { it.code == "AXC101" })
@@ -40,10 +50,13 @@ class ValidatorTest {
 
     private fun copyFixture(): Path {
         val target = Files.createTempDirectory("axiora-fixture")
-        Files.walk(fixture).use { paths -> paths.forEach { source ->
-            val relative = fixture.relativize(source); val dest = target.resolve(relative)
-            if (Files.isDirectory(source)) Files.createDirectories(dest) else Files.copy(source, dest)
-        } }
+        Files.walk(fixture).use { paths ->
+            paths.forEach { source ->
+                val relative = fixture.relativize(source)
+                val dest = target.resolve(relative)
+                if (Files.isDirectory(source)) Files.createDirectories(dest) else Files.copy(source, dest)
+            }
+        }
         return target
     }
 }

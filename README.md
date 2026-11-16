@@ -46,11 +46,15 @@ uv run --locked python scripts/build_docs.py --check
 The Phase 1 JVM validator is built with the committed Gradle wrapper (Java 17 bytecode target; run Gradle with JDK 17 or newer):
 
 ```sh
+./gradlew ktlintCheck
+./gradlew ktlintFormat
 ./gradlew test
 ./gradlew :compiler-cli:installDist
 ./compiler-cli/build/install/axiora/bin/axiora validate examples/prime-and-maximal
 ./compiler-cli/build/install/axiora/bin/axiora validate examples/prime-and-maximal --format json
 ```
+
+`ktlintCheck` checks Kotlin source and Gradle Kotlin scripts across the project. `ktlintFormat` applies ktlint's formatting rules to those files; review the resulting diff before keeping the changes.
 
 Validation reads the unpacked fixture and does not rewrite it. The archive packer and Android app are still future phases.
 
