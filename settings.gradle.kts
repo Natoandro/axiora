@@ -1,3 +1,3 @@
 rootProject.name = "axiora"
 
-include(":content-model", ":content-validation", ":compiler-cli", ":learning-core")
+include(":content-model", ":content-validation", ":compiler-cli", ":learning-core", ":storage")

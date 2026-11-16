@@ -113,6 +113,13 @@ Work in this order:
 
 **Outcome:** the same engine runs over durable SQLite records and immutable package storage.
 
+### Initial implementation record — in progress
+
+- Added a `storage` JVM module with SQLite JDBC 3.54.1.0 and schema version 1. The relational schema includes immutable package revisions, pinned sessions, command results, drafts, attempts, ordered events, observations, summaries, review tasks, and notes.
+- Added package registration with same-identity/hash idempotence and conflict detection. Added a transaction API that checks command receipts before invoking a transition callback, then commits the checkpoint, draft, attempts, events, projection invalidations, and versioned result payload atomically. Draft updates require a strictly newer revision.
+- Result and checkpoint serialization are deliberately opaque versioned payloads at this boundary. The adapter is a JVM implementation; Android driver compatibility and lifecycle integration remain unverified. See [ADR-012](docs/markdown/decisions.md#adr-012--relational-learner-records-and-durable-command-receipts).
+- Compilation could not be completed in the current environment because Gradle failed before project configuration while determining a usable wildcard IP. No persistence integration tests have been added or run yet, so this phase remains open and no durability gate is claimed.
+
 1. Implement the `storage` adapter and versioned relational schema for package revisions, sessions, command results, drafts, attempts, events, observations, summaries, reviews, and notes.
 2. Commit command results, primary records, checkpoint changes, and projection updates or invalidations atomically. Enforce command-ID uniqueness and monotonically increasing draft revisions.
 3. Implement staged installation and startup reconciliation across filesystem promotion and database registration. Same-package import is idempotent; conflicting bytes under the same identity/version are rejected.
@@ -192,4 +199,4 @@ Work in this order:
 
 ## Next concrete change
 
-Begin Phase 4 with the SQLite record model and command receipt transaction. Keep filesystem installation in Phase 4. Do not describe hashes as authenticated authorship.
+Add a versioned codec and repository facade that loads a pinned session checkpoint, invokes `StudyEngine`, and maps accepted results into the SQLite transaction API. Then add real-database tests for duplicate command replay, rollback at each write boundary, stale drafts, and package identity conflicts. Keep filesystem installation in Phase 4. Do not describe hashes as authenticated authorship.

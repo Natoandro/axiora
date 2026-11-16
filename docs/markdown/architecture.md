@@ -26,14 +26,14 @@ Optional future AI adapters sit outside these core boundaries. They may propose 
 
 ## Proposed module structure
 
-These are intended boundaries, not directories that currently exist.
+These are intended boundaries. The content, validation, compiler, learning-core, and initial JVM storage modules exist. The Android application does not yet exist.
 
 | Module | Responsibility | Must not depend on |
 | --- | --- | --- |
 | `content-model` | Typed identifiers, unit and concept structures, version parsing | Android, database, UI, network |
 | `content-validation` | Structural and semantic package rules, diagnostics | Android UI, AI provider |
 | `learning-core` | Session transitions, evaluation, evidence and review policy | Android, file system, SQLite, network |
-| `storage` | Transactions, persistence, migrations, content lookup | UI components |
+| `storage` | Transactions, persistence, migrations, content lookup | UI components; implemented initially as a JVM SQLite JDBC adapter |
 | `android-app` | Accessible screens, lifecycle, file selection, rendering | Compiler generation internals |
 | `compiler-cli` | Authoring input, normalization, validation, reproducible packaging | Android |
 

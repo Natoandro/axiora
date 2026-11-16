@@ -133,3 +133,15 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 **Tradeoff:** ZIP adds path, metadata, duplicate-entry, and expansion checks. A single JSON envelope could remove archive handling for small packages. A compiler-generated SQLite package is also viable and avoids manual database authoring, but it makes the database schema and SQLite compatibility part of the content contract.
 
 **Reopen when:** Package scale and access patterns show that separate files provide little value, or when selective indexed reads justify a database package. Compare reader complexity and compatibility costs against the ZIP implementation before changing the contract. See [package container options](compiler.md#package-container-options).
+
+## ADR-012 â€” Relational learner records and durable command receipts
+
+**Status:** adopted for the Phase 4 JVM storage adapter; Android integration remains unverified.
+
+**Problem:** The headless engine can produce a new checkpoint, attempts, and events, but process restart currently loses them and replaying a command can apply it twice.
+
+**Decision:** Store learner records in a versioned SQLite schema. The JVM adapter uses Xerial SQLite JDBC 3.54.1.0. A command transaction checks its durable receipt before invoking the transition callback, then commits the checkpoint, optional draft, attempts, events, projection invalidations, and versioned result payload together. Replays return the original payload. Package revisions are unique by package ID and version; a different manifest hash is a conflict.
+
+**Tradeoff:** Result and checkpoint payload encoding remain application responsibilities, and this initial JDBC adapter does not establish Android runtime compatibility. The Android storage driver and lifecycle behavior must be selected and verified during the Android phase while preserving the transaction and schema invariants.
+
+**Reopen when:** Android compatibility or migration evidence requires a different driver or schema. Keep durable command identity, atomic primary-record writes, and immutable package identity across any replacement.
