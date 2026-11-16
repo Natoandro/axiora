@@ -2,7 +2,7 @@
   "schema_version": "0.1.0",
   "package_id": "axiora.ca.first-slice",
   "version": "0.1.0",
-  "title": "Prime and maximal ideals — design fixture",
+  "title": "Prime and maximal ideals \u2014 design fixture",
   "language": "en",
   "license": "UNLICENSED",
   "requires_capabilities": [
@@ -20,13 +20,25 @@
   ],
   "units": [
     {
+      "id": "axiora.ca.ideal-prerequisites",
+      "version": "0.1.0",
+      "path": "units/prerequisite-recognition.json"
+    },
+    {
       "id": "axiora.ca.prime-vs-maximal",
       "version": "0.1.0",
       "path": "units/prime-vs-maximal.json"
+    },
+    {
+      "id": "axiora.ca.maximal-implies-prime-proof",
+      "version": "0.1.0",
+      "path": "units/proof-and-fresh-check.json"
     }
   ],
   "entry_units": [
-    "axiora.ca.prime-vs-maximal"
+    "axiora.ca.ideal-prerequisites",
+    "axiora.ca.prime-vs-maximal",
+    "axiora.ca.maximal-implies-prime-proof"
   ],
   "review": {
     "status": "draft",
@@ -39,9 +51,19 @@
       "sha256": "5f63f30ea5e1a2c4180d33c619395411d23b5045fbb13b7ffc0b215b33d34b56"
     },
     {
+      "path": "units/prerequisite-recognition.json",
+      "bytes": 2645,
+      "sha256": "7b10fceb51d72236831c7a69d62512a04df3bc10aecc65cac4054df375409a55"
+    },
+    {
       "path": "units/prime-vs-maximal.json",
       "bytes": 5013,
       "sha256": "4dae72f7d09cb682d9658971f21c27f8c17f9f765fa6e0a469fb4044933d90bf"
+    },
+    {
+      "path": "units/proof-and-fresh-check.json",
+      "bytes": 3700,
+      "sha256": "08a1209d38d44e819e4760c095a191ed194f5e2a15749bac02f5ccab0c94d6d7"
     }
   ]
 }

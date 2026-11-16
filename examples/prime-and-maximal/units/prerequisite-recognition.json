@@ -1,0 +1,69 @@
+{
+  "schema_version": "0.1.0",
+  "id": "axiora.ca.ideal-prerequisites",
+  "version": "0.1.0",
+  "title": "Recognize the ideal setting",
+  "concept_ids": [
+    "axiora.ca.prime-ideal"
+  ],
+  "requires_concepts": [
+    "axiora.ca.ring",
+    "axiora.ca.ideal"
+  ],
+  "objectives": [
+    {
+      "id": "ideal-condition",
+      "concept_id": "axiora.ca.prime-ideal",
+      "skill": "recognition",
+      "description": "Recognize the closure condition that defines an ideal."
+    }
+  ],
+  "sources": [
+    {
+      "id": "original-prerequisite",
+      "kind": "original",
+      "citation": "Original prerequisite check prepared for the Axiora design fixture.",
+      "locator": "This learning unit.",
+      "rights": "No third-party text reproduced; distribution license not yet selected."
+    }
+  ],
+  "entry": "select-condition",
+  "activities": {
+    "select-condition": {
+      "type": "choice",
+      "source_ids": ["original-prerequisite"],
+      "prompt_md": "Which condition is part of the definition of an ideal $I$ in a ring $R$?",
+      "options": [
+        {"id": "closure", "text_md": "For every $a \\in I$ and $r \\in R$, $ra \\in I$."},
+        {"id": "prime-only", "text_md": "Whenever $ab \\in I$, one of $a$ or $b$ lies in $I$."}
+      ],
+      "evaluator": {"type": "exact_choice", "expected": "closure"},
+      "feedback": {
+        "correct_md": "Correct. Closure under multiplication by ring elements is part of the ideal condition.",
+        "incorrect_md": "The second condition is the additional defining property of a prime ideal."
+      },
+      "transitions": {"correct": "recall", "incorrect": "remediate"},
+      "evidence": {
+        "objective_id": "ideal-condition",
+        "assessment_family": "axiora.ca.ideal.closure-check"
+      }
+    },
+    "recall": {
+      "type": "exposition",
+      "source_ids": ["original-prerequisite"],
+      "content_md": "An ideal is an additive subgroup closed under multiplication by arbitrary elements of the ring. Primality adds the condition that $ab \\in I$ forces $a \\in I$ or $b \\in I$.",
+      "next": "finish"
+    },
+    "remediate": {
+      "type": "exposition",
+      "source_ids": ["original-prerequisite"],
+      "content_md": "Keep the two conditions separate: ideal closure is required for every ring element multiplying an element of $I$; the product condition distinguishes prime ideals among ideals.",
+      "next": "finish"
+    },
+    "finish": {
+      "type": "end",
+      "source_ids": ["original-prerequisite"],
+      "summary_md": "You reviewed the ideal condition used by the next unit. This short check is practice, not evidence of proof skill."
+    }
+  }
+}

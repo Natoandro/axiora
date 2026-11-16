@@ -48,6 +48,104 @@ class ValidatorTest {
         assertTrue(result.diagnostics.any { it.code == "AXC203" && it.message.contains("missing-node") }, result.diagnostics.toString())
     }
 
+    @Test fun `unreachable activity reports stable code and path`() {
+        val root = copyFixture()
+        val file = root.resolve("units/prime-vs-maximal.json")
+        file.toFile().writeText(
+            file.toFile().readText().replace(
+                "\"finish\": {",
+                "\"orphan\": {\"type\": \"end\", \"source_ids\": [\"original-exposition\"], \"summary_md\": \"Unused.\"},\n    \"finish\": {",
+            ),
+        )
+        val diagnostic =
+            ContentValidator().validate(root).diagnostics.single {
+                it.code == "AXC203" && it.path == "$.activities.orphan"
+            }
+        assertTrue(diagnostic.message.contains("unreachable"))
+    }
+
+    @Test fun `activity cycles report graph failure`() {
+        val root = copyFixture()
+        val file = root.resolve("units/prime-vs-maximal.json")
+        file.toFile().writeText(file.toFile().readText().replace("\"next\": \"proof\"", "\"next\": \"predict\""))
+        val result = ContentValidator().validate(root)
+        assertTrue(result.diagnostics.any { it.code == "AXC203" && it.message.contains("cycle") }, result.diagnostics.toString())
+        assertTrue(
+            result.diagnostics.any {
+                it.code == "AXC203" && it.message.contains("path that does not terminate")
+            },
+            result.diagnostics.toString(),
+        )
+        assertTrue(result.diagnostics.any { it.path.startsWith("$.activities") })
+    }
+
+    @Test fun `manifest must declare capabilities used by activities`() {
+        val root = copyFixture()
+        val file = root.resolve("manifest.json")
+        file.toFile().writeText(file.toFile().readText().replace("    \"activity.end.v1\",\n", ""))
+        val result = ContentValidator().validate(root)
+        assertTrue(
+            result.diagnostics.any {
+                it.code == "AXC102" && it.path == "$.requires_capabilities" && it.message.contains("activity.end.v1")
+            },
+            result.diagnostics.toString(),
+        )
+    }
+
+    @Test fun `assessment evidence cannot target a proof objective`() {
+        val root = copyFixture()
+        val file = root.resolve("units/prime-vs-maximal.json")
+        file.toFile().writeText(
+            file.toFile().readText().replace("\"objective_id\": \"distinguish\"", "\"objective_id\": \"prove-implication\""),
+        )
+        val result = ContentValidator().validate(root)
+        assertTrue(
+            result.diagnostics.any {
+                it.code == "AXC302" && it.path == "$.activities.predict.evidence.objective_id"
+            },
+            result.diagnostics.toString(),
+        )
+    }
+
+    @Test fun `proof self review cannot target a recognition objective`() {
+        val root = copyFixture()
+        val file = root.resolve("units/prime-vs-maximal.json")
+        file.toFile().writeText(
+            file.toFile().readText().replace("\"objective_id\": \"prove-implication\"", "\"objective_id\": \"distinguish\""),
+        )
+        val result = ContentValidator().validate(root)
+        assertTrue(
+            result.diagnostics.any {
+                it.code == "AXC302" && it.path == "$.activities.proof.objective_id"
+            },
+            result.diagnostics.toString(),
+        )
+    }
+
+    @Test fun `prerequisite relation cycles are rejected`() {
+        val root = copyFixture()
+        val file = root.resolve("concepts/core.json")
+        file.toFile().writeText(
+            file
+                .toFile()
+                .readText()
+                .replace(
+                    "\"relations\": []",
+                    "\"relations\": [{\"type\": \"prerequisite\", \"target\": \"axiora.ca.maximal-ideal\"}]",
+                ).replace(
+                    "\"type\": \"implies\"",
+                    "\"type\": \"prerequisite\"",
+                ),
+        )
+        val result = ContentValidator().validate(root)
+        assertTrue(
+            result.diagnostics.any {
+                it.code == "AXC203" && it.message.contains("Prerequisite relations contain a cycle")
+            },
+            result.diagnostics.toString(),
+        )
+    }
+
     private fun copyFixture(): Path {
         val target = Files.createTempDirectory("axiora-fixture")
         Files.walk(fixture).use { paths ->

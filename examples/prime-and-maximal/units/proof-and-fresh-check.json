@@ -1,0 +1,90 @@
+{
+  "schema_version": "0.1.0",
+  "id": "axiora.ca.maximal-implies-prime-proof",
+  "version": "0.1.0",
+  "title": "Construct a proof, then check the quotient idea",
+  "concept_ids": [
+    "axiora.ca.prime-ideal",
+    "axiora.ca.maximal-ideal"
+  ],
+  "requires_concepts": [
+    "axiora.ca.ideal",
+    "axiora.ca.quotient-ring",
+    "axiora.ca.integral-domain",
+    "axiora.ca.field"
+  ],
+  "objectives": [
+    {
+      "id": "construct-implication",
+      "concept_id": "axiora.ca.maximal-ideal",
+      "skill": "proof_construction",
+      "description": "Construct a proof that every maximal ideal is prime."
+    },
+    {
+      "id": "quotient-check",
+      "concept_id": "axiora.ca.prime-ideal",
+      "skill": "recognition",
+      "description": "Recognize the quotient characterization of maximality."
+    }
+  ],
+  "sources": [
+    {
+      "id": "original-proof",
+      "kind": "original",
+      "citation": "Original proof practice prepared for the Axiora design fixture.",
+      "locator": "This learning unit.",
+      "rights": "No third-party text reproduced; distribution license not yet selected."
+    }
+  ],
+  "entry": "setup",
+  "activities": {
+    "setup": {
+      "type": "exposition",
+      "source_ids": ["original-proof"],
+      "content_md": "A maximal ideal has a quotient that is a field; a prime ideal has a quotient that is an integral domain. Build the implication by connecting these characterizations.",
+      "next": "construct"
+    },
+    "construct": {
+      "type": "proof",
+      "source_ids": ["original-proof"],
+      "prompt_md": "Let $R$ be a commutative ring with identity and let $M$ be a maximal ideal. Prove that $M$ is prime.",
+      "hints": [
+        {"id": "quotient", "content_md": "Translate both ideal properties into statements about $R/M$."},
+        {"id": "field-domain", "content_md": "A field is an integral domain. Apply the quotient characterization of primality."}
+      ],
+      "model_solution_md": "Since $M$ is maximal, $R/M$ is a field. Every field is an integral domain, so $R/M$ is an integral domain. The quotient characterization of primality then shows that $M$ is prime.",
+      "rubric": [
+        {"id": "field", "criterion_md": "Use maximality to identify $R/M$ as a field."},
+        {"id": "domain", "criterion_md": "Explain that a field is an integral domain."},
+        {"id": "prime", "criterion_md": "Apply the quotient characterization and state the conclusion."}
+      ],
+      "evaluator": {"type": "self_review"},
+      "objective_id": "construct-implication",
+      "next": "fresh-check"
+    },
+    "fresh-check": {
+      "type": "choice",
+      "source_ids": ["original-proof"],
+      "prompt_md": "Which quotient condition characterizes maximality of a proper ideal $M$?",
+      "options": [
+        {"id": "field", "text_md": "$R/M$ is a field."},
+        {"id": "domain", "text_md": "$R/M$ is an integral domain, with no further condition."}
+      ],
+      "evaluator": {"type": "exact_choice", "expected": "field"},
+      "feedback": {
+        "correct_md": "Correct. The field characterization is the step that gives the implication.",
+        "incorrect_md": "An integral-domain quotient characterizes primality; maximality corresponds to a field quotient."
+      },
+      "transitions": {"correct": "finish", "incorrect": "finish"},
+      "evidence": {
+        "objective_id": "quotient-check",
+        "assessment_family": "axiora.ca.maximal.quotient-characterization"
+      }
+    },
+    "finish": {
+      "type": "end",
+      "source_ids": ["original-proof"],
+      "summary_md": "The proof attempt and fresh check are recorded separately. Self-review does not establish machine-verified correctness."
+    }
+  }
+}

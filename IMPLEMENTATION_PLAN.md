@@ -1,6 +1,6 @@
 # Axiora implementation plan
 
-**Status:** active execution plan · 16 November 2026. M0 is complete. Phase 1 has started; see the [implementation status record](IMPLEMENTATION_STATUS.md). The phase exit gate remains open.
+**Status:** active execution plan · 16 November 2026. Phase 1 is complete and Phase 2 is ready to begin; see the [implementation status record](IMPLEMENTATION_STATUS.md). M1 remains open until the Phase 2 package and reader gate passes.
 
 This plan turns the [delivery milestones](docs/markdown/delivery.md) into reviewable work. The detailed [content contract](docs/markdown/content.md), [learner-state contract](docs/markdown/learner-state.md), and [decision log](docs/markdown/decisions.md) remain authoritative. A phase is complete only when its observable exit criteria pass; creating directories or screens is insufficient.
 
@@ -37,7 +37,7 @@ There are no calendar commitments yet. Estimate each phase after its preceding g
 - JSON: Jackson 2.22.0 tree parsing with `STRICT_DUPLICATE_DETECTION`; no Kotlin data binding is used at the trust boundary. The validator checks exact object fields and types before producing typed content models.
 - CLI: Gradle Application plugin distribution, initially invoked from `compiler-cli/build/install/axiora/bin/axiora`. It supports the documented `validate` text and JSON formats; packaging is not included yet.
 - Validation layers: JSON syntax, UTF-8, exact fields, supported versions/capabilities, and bounds are structural; IDs, inventory/hash consistency, references, objective/evaluator compatibility, prerequisite cycles, and activity graph properties are semantic. Review status remains an author claim and is never authenticated by this tool.
-- Verified commands are listed in [README.md](README.md). The current implementation is an initial executable slice; it does not yet satisfy the full Phase 1 exit gate.
+- Verified commands are listed in [README.md](README.md). The Phase 1 exit gate is complete; the verified implementation is recorded in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 Work in this order:
 
@@ -184,4 +184,4 @@ Work in this order:
 
 ## Next concrete change
 
-Start Phase 1 with the Gradle wrapper, three JVM modules, strict manifest/concept/unit models for the current fixture, and a `validate` command that reports structural diagnostics. Include one valid fixture test, duplicate-key rejection, unsupported-schema rejection, and a broken-reference diagnostic. Document the verified build/run commands and leave archive installation, Android scaffolding, and AI work for their planned phases.
+Start Phase 2 by implementing deterministic `pack` and `inspect` commands over the validated content model. Begin with archive limits and hostile-input cases from C03; keep filesystem installation in Phase 4. Do not describe hashes as authenticated authorship.

@@ -106,6 +106,15 @@ class ContentValidator {
         val unitRecords = parseManifestUnits(manifest["units"])
         val files = parseFiles(manifest["files"])
         validateReview(manifest["review"])
+        duplicateValues(conceptPaths, "manifest.json", "$.concept_files", "Concept path")
+        duplicateValues(unitRecords.map { it.id.value }, "manifest.json", "$.units", "Unit ID")
+        duplicateValues(unitRecords.map { it.path }, "manifest.json", "$.units", "Unit path")
+        duplicateValues(files.map { it.path }, "manifest.json", "$.files", "File path")
+        val foldedPaths = files.map { it.path.lowercase() }
+        if (foldedPaths.size != foldedPaths.toSet().size) {
+            error("AXC103", "manifest.json", "$.files", "Payload paths must not collide case-insensitively.")
+        }
+        duplicateValues(conceptPaths + unitRecords.map { it.path }, "manifest.json", "$.files", "Payload ownership")
         val declared = files.map { it.path }.toSet()
         (
             conceptPaths +
@@ -133,6 +142,7 @@ class ContentValidator {
         conceptPaths.forEach { path -> read(root, path, 2_097_152)?.let { concepts.putAll(parseConcepts(it, path)) } }
         validatePrerequisiteGraph(concepts)
         val unitIds = mutableSetOf<String>()
+        val usedCapabilities = mutableSetOf<String>()
         unitRecords.forEach { rec ->
             val unit = read(root, rec.path, 2_097_152) ?: return@forEach
             parseUnit(unit, rec.path, rec.id.value, rec.version.toString())?.let { parsed ->
@@ -142,7 +152,7 @@ class ContentValidator {
                 ) {
                     error("AXC203", rec.path, "$.id", "Unit identity does not match its manifest record.")
                 }
-                validateUnit(parsed.third, rec.path, concepts.keys)
+                validateUnit(parsed.third, rec.path, concepts.keys, usedCapabilities)
             }
         }
         if (unitIds.isNotEmpty() &&
@@ -157,6 +167,9 @@ class ContentValidator {
                         u.id.value
                     }
             }.forEach { error("AXC203", "manifest.json", "$.entry_units", "Entry unit '$it' is not declared.") }
+        (usedCapabilities - caps.toSet()).forEach {
+            error("AXC102", "manifest.json", "$.requires_capabilities", "Manifest omits required capability '$it'.")
+        }
 
         files.forEach { file ->
             safePath(file.path, "manifest.json", "$.files")
@@ -253,6 +266,17 @@ class ContentValidator {
     ) {
         diagnostics +=
             Diagnostic(code, file = file, path = path, message = message, suggestion = suggestion)
+    }
+
+    private fun duplicateValues(
+        values: List<String>,
+        file: String,
+        path: String,
+        label: String,
+    ) {
+        values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach {
+            error("AXC203", file, path, "$label '$it' is declared more than once.")
+        }
     }
 
     private fun warning(
@@ -554,6 +578,11 @@ class ContentValidator {
                     val oi = id(o["id"], file, "$p.id")
                     val ci = id(o["concept_id"], file, "$p.concept_id")
                     val skill = string(o["skill"], file, "$p.skill", 64)
+                    if (skill != null &&
+                        skill !in setOf("recall", "recognition", "application", "proof_comprehension", "proof_construction", "transfer")
+                    ) {
+                        error("AXC302", file, "$p.skill", "Unsupported objective skill '$skill'.")
+                    }
                     string(o["description"], file, "$p.description")
                     if (ci != null &&
                         ci !in conceptIds
@@ -823,6 +852,7 @@ class ContentValidator {
         unit: UnitData,
         file: String,
         knownConcepts: Set<String>,
+        usedCapabilities: MutableSet<String>,
     ) {
         unit.conceptIds
             .filter {
@@ -846,7 +876,13 @@ class ContentValidator {
                 )
             }
             when (activity) {
+                is mg.abela.axiora.content.Exposition -> {
+                    usedCapabilities += "activity.exposition.v1"
+                }
+
                 is mg.abela.axiora.content.Choice -> {
+                    usedCapabilities += "activity.choice.v1"
+                    usedCapabilities += "evaluator.exact-choice.v1"
                     activity.evidence?.let { (objectiveId, family) ->
                         val objective = objectives[objectiveId]
                         if (objective ==
@@ -880,6 +916,8 @@ class ContentValidator {
                 }
 
                 is mg.abela.axiora.content.Proof -> {
+                    usedCapabilities += "activity.proof.v1"
+                    usedCapabilities += "evaluator.self-review.v1"
                     val o = objectives[activity.objectiveId]
                     if (o ==
                         null
@@ -892,8 +930,12 @@ class ContentValidator {
                     }
                 }
 
-                else -> {
-                    Unit
+                is mg.abela.axiora.content.Reflection -> {
+                    usedCapabilities += "activity.reflection.v1"
+                }
+
+                is mg.abela.axiora.content.End -> {
+                    usedCapabilities += "activity.end.v1"
                 }
             }
         }
