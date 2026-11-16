@@ -10,6 +10,8 @@ Axiora combines guided study, examples and counterexamples, proof practice, and 
 
 - **Human edition:** [open the HTML handbook](docs/index.html). It is a static, searchable, printable site with no remote assets.
 - **AI and source edition:** start at [the Markdown index](docs/markdown/index.md).
+- **Implementation sequence:** [phased implementation plan](IMPLEMENTATION_PLAN.md), with tasks and exit criteria.
+- **Implementation status:** [verified phase record](IMPLEMENTATION_STATUS.md).
 - **Working instructions:** [AGENTS.md](AGENTS.md).
 - **Concrete example:** [prime and maximal ideals](examples/prime-and-maximal/README.md), an unpacked illustrative package with a diagnostic question, remediation, proof attempt, and reflection.
 
@@ -40,6 +42,17 @@ Python tooling is managed by uv through `pyproject.toml` and `uv.lock`, with Pyt
 ```sh
 uv run --locked python scripts/build_docs.py --check
 ```
+
+The Phase 1 JVM validator is built with the committed Gradle wrapper (Java 17 bytecode target; run Gradle with JDK 17 or newer):
+
+```sh
+./gradlew test
+./gradlew :compiler-cli:installDist
+./compiler-cli/build/install/axiora/bin/axiora validate examples/prime-and-maximal
+./compiler-cli/build/install/axiora/bin/axiora validate examples/prime-and-maximal --format json
+```
+
+Validation reads the unpacked fixture and does not rewrite it. The archive packer and Android app are still future phases.
 
 `check_docs.py` checks local Markdown/HTML links and fragments, the example's file hashes and documented semantic invariants. It is a documentation check, not a production package validator or mathematical proof checker.
 

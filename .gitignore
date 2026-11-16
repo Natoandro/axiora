@@ -1,6 +1,11 @@
+# Gradle
+.gradle/
+**/build/
+
+# Python documentation tooling
 .venv/
 __pycache__/
-*.pyc
-build/
+*.py[cod]
+.pytest_cache/
 /core
 /core.*

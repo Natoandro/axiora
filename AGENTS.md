@@ -14,6 +14,8 @@ The owner authorized independent product and architecture decisions for this des
 
 Markdown in `docs/markdown/` is the canonical detailed design. `PRODUCT.md` is a short orientation record; resolve detail through the handbook. `DESIGN.md` describes the documentation website, not an approved Android visual design. When they conflict, fix the inconsistency rather than silently inventing a new requirement. Recorded decisions remain proposals until implemented and verified.
 
+Follow [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the phased implementation sequence and its exit criteria. The plan is subordinate to the canonical contracts and decisions in `docs/markdown/`.
+
 ## Product invariants
 
 - Core learning must work offline without an account or runtime AI.
@@ -50,3 +52,10 @@ Implement the milestones in order unless evidence warrants changing the plan. Re
 Use checks proportionate to the change. Future code needs meaningful tests for transitions, evaluation, safe import, persistence, migration, and review scheduling. Do not add tests that merely restate static prose.
 
 Summarize what changed, why, what passed, and what remains proposed or unverified. Use clickable file links. Do not initialize or modify version-control metadata, commit, or publish unless requested or already authorized.
+
+## Commit messages
+
+- Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>(<scope>): <short imperative summary>`; omit the scope when it adds no useful context.
+- Prefer `feat`, `fix`, `docs`, `test`, `refactor`, `build`, or `chore` to describe the change accurately.
+- Mark breaking changes with `!` after the type or scope and explain them in a `BREAKING CHANGE:` footer.
+- Keep each commit focused. Include related documentation and tests, and leave unrelated worktree changes out.
