@@ -10,6 +10,8 @@ import mg.abela.axiora.content.Reflection
 import mg.abela.axiora.content.Revision
 import mg.abela.axiora.content.StableId
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 data class UnitRevisionRef(
@@ -29,6 +31,10 @@ fun interface IdSource {
 
 fun interface TimeSource {
     fun now(): Instant
+}
+
+fun interface ZoneSource {
+    fun offsetAt(instant: Instant): ZoneOffset
 }
 
 enum class SessionStatus { ACTIVE, PAUSED, COMPLETED, ABANDONED }
@@ -70,6 +76,8 @@ data class Attempt(
     val method: AssessmentMethod,
     val assistance: AssistanceSnapshot,
     val submittedAt: Instant,
+    val localStudyDate: LocalDate,
+    val zoneOffset: ZoneOffset,
 )
 
 data class LearningEvent(
@@ -216,6 +224,7 @@ class StudyEngine(
     private val unitLookup: UnitLookup,
     private val time: TimeSource = TimeSource { Instant.now() },
     private val ids: IdSource = IdSource { UUID.randomUUID().toString() },
+    private val zone: ZoneSource = ZoneSource { ZoneOffset.UTC },
 ) {
     fun startSession(
         sessionId: String,
@@ -286,6 +295,8 @@ class StudyEngine(
         val selected = progress.selectedOption ?: return rejected(session, TransitionError.NoSelection)
         if (progress.feedbackVisible && progress.firstChoiceBranch == true) return rejected(session, TransitionError.RetryNotAvailable)
         val correct = selected == choice.expected
+        val submittedAt = time.now()
+        val offset = zone.offsetAt(submittedAt)
         val attempt =
             Attempt(
                 ids.next(),
@@ -296,7 +307,9 @@ class StudyEngine(
                 if (correct) AttemptOutcome.CORRECT else AttemptOutcome.INCORRECT,
                 AssessmentMethod.EXACT_CHOICE,
                 progress.assistance,
-                time.now(),
+                submittedAt,
+                LocalDate.ofInstant(submittedAt, offset),
+                offset,
             )
         val updated =
             progress.copy(
@@ -360,6 +373,8 @@ class StudyEngine(
         progress: ActivityProgress,
     ): TransitionResult {
         if (activity !is Proof) return rejected(session, TransitionError.WrongActivityType)
+        val submittedAt = time.now()
+        val offset = zone.offsetAt(submittedAt)
         val attempt =
             Attempt(
                 ids.next(),
@@ -370,7 +385,9 @@ class StudyEngine(
                 AttemptOutcome.UNASSESSED,
                 AssessmentMethod.SELF_REVIEW,
                 progress.assistance,
-                time.now(),
+                submittedAt,
+                LocalDate.ofInstant(submittedAt, offset),
+                offset,
             )
         val next = progress.copy(attempts = progress.attempts + attempt, proofSubmitted = true, readyToContinue = false)
         return accept(session, command, next, EventType.PROOF_SUBMITTED, mapOf("outcome" to AttemptOutcome.UNASSESSED.name), attempt)

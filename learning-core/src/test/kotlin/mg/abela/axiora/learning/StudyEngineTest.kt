@@ -5,11 +5,14 @@ import mg.abela.axiora.content.Choice
 import mg.abela.axiora.content.End
 import mg.abela.axiora.content.Exposition
 import mg.abela.axiora.content.LearningUnit
+import mg.abela.axiora.content.Objective
 import mg.abela.axiora.content.Proof
 import mg.abela.axiora.content.Reflection
 import mg.abela.axiora.content.Revision
 import mg.abela.axiora.content.StableId
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -113,6 +116,170 @@ class StudyEngineTest {
         assertEquals(SessionStatus.ACTIVE, accepted(paused, StudyCommand.Resume("resume")).status)
     }
 
+    @Test fun `fixture run keeps retries hinted attempts and proof self review out of demonstrated evidence`() {
+        var session = engine.startSession("fixture-run", revision).getOrThrow()
+        session = accepted(session, StudyCommand.Continue("fixture-intro"))
+        session = accepted(session, StudyCommand.SelectChoice("fixture-wrong-select", "wrong"))
+        session = accepted(session, StudyCommand.SubmitChoice("fixture-wrong-submit"))
+        session = accepted(session, StudyCommand.SelectChoice("fixture-retry-select", "right"))
+        session = accepted(session, StudyCommand.SubmitChoice("fixture-retry-submit"))
+        session = accepted(session, StudyCommand.Continue("fixture-question"))
+        session = accepted(session, StudyCommand.Continue("fixture-remediation"))
+        session = accepted(session, StudyCommand.RevealHint("fixture-hint", "quotient"))
+        session = accepted(session, StudyCommand.SaveProofDraft("fixture-draft", "A proof attempt.", 1))
+        session = accepted(session, StudyCommand.SubmitProof("fixture-proof"))
+        session = accepted(session, StudyCommand.RecordRubric("fixture-rubric", mapOf("field" to RubricMark.MET)))
+        session = accepted(session, StudyCommand.Continue("fixture-proof-next"))
+        session = accepted(session, StudyCommand.RecordReflection("fixture-reflection", "Need another example."))
+        session = accepted(session, StudyCommand.Continue("fixture-reflection-next"))
+        session = accepted(session, StudyCommand.Continue("fixture-end"))
+
+        assertEquals(SessionStatus.COMPLETED, session.status)
+        val observations = EvidencePolicy.observations(session)
+        assertEquals(3, observations.size)
+        assertEquals(true, observations.first().eligible)
+        assertEquals(false, observations.last().eligible)
+        assertEquals(AttemptOutcome.UNASSESSED, observations.last().outcome)
+        assertEquals(ObjectiveState.PRACTICING, EvidencePolicy.summarize("objective", observations).state)
+        assertEquals(
+            AttemptOutcome.UNASSESSED,
+            session
+                .activityProgress("proof")
+                .attempts
+                .single()
+                .outcome,
+        )
+        assertEquals(true, ClockPolicy.timestampsCoherent(session.events))
+        val backwardEvent =
+            session.events.last().copy(
+                occurrence =
+                    session.events
+                        .first()
+                        .occurrence
+                        .minusSeconds(1),
+            )
+        assertEquals(false, ClockPolicy.timestampsCoherent(session.events.dropLast(1) + backwardEvent))
+    }
+
+    @Test fun `only two delayed unassisted first successes in distinct families demonstrate recognition`() {
+        val firstAt = Instant.parse("2026-11-16T12:00:00Z")
+        val first = observation("a1", "family-a", firstAt, LocalDate.parse("2026-11-16"))
+        val sameDay = observation("a2", "family-b", firstAt.plusSeconds(3600), LocalDate.parse("2026-11-16"))
+        val nextDay = observation("a3", "family-b", firstAt.plusSeconds(86400), LocalDate.parse("2026-11-17"))
+        assertEquals(ObjectiveState.PRACTICING, EvidencePolicy.summarize("objective", listOf(first, sameDay)).state)
+        assertEquals(ObjectiveState.DEMONSTRATED, EvidencePolicy.summarize("objective", listOf(first, nextDay)).state)
+        assertEquals(
+            ObjectiveState.PRACTICING,
+            EvidencePolicy.summarize("objective", listOf(first, nextDay.copy(assessmentFamily = "family-a"))).state,
+        )
+        assertEquals(
+            ObjectiveState.PRACTICING,
+            EvidencePolicy.summarize("objective", listOf(first, nextDay), timestampsCoherent = false).state,
+        )
+        assertEquals(
+            ObjectiveState.PRACTICING,
+            EvidencePolicy
+                .summarize(
+                    "objective",
+                    listOf(
+                        first,
+                        observation("a4", "family-c", firstAt.plusSeconds(172800), LocalDate.parse("2026-11-18"), AttemptOutcome.INCORRECT),
+                    ),
+                ).state,
+        )
+        val afterDemonstration =
+            observation(
+                "a5",
+                "family-c",
+                firstAt.plusSeconds(172800),
+                LocalDate.parse("2026-11-18"),
+                AttemptOutcome.INCORRECT,
+            )
+        assertEquals(
+            ObjectiveState.REVISIT,
+            EvidencePolicy.summarize("objective", listOf(first, nextDay, afterDemonstration)).state,
+        )
+    }
+
+    @Test fun `review tasks deduplicate families and follow the interval ladder`() {
+        val at = Instant.parse("2026-11-16T12:00:00Z")
+        val first = observation("r1", "family-a", at, LocalDate.parse("2026-11-16"))
+        var task = ReviewScheduler.apply(null, first, revision)!!
+        assertEquals(LocalDate.parse("2026-11-17"), task.dueDate)
+        val beforeDue = observation("r2", "family-b", at.plusSeconds(86400), LocalDate.parse("2026-11-16"))
+        assertEquals(task, ReviewScheduler.apply(task, beforeDue))
+        val dueSameFamily = observation("r3", "family-a", at.plusSeconds(86400), LocalDate.parse("2026-11-17"))
+        assertEquals(task, ReviewScheduler.apply(task, dueSameFamily))
+        val dueFresh = observation("r4", "family-b", at.plusSeconds(86400), LocalDate.parse("2026-11-17"))
+        task = ReviewScheduler.apply(task, dueFresh)!!
+        assertEquals(1, task.stage)
+        assertEquals(LocalDate.parse("2026-11-20"), task.dueDate)
+        val duplicate = task.copy(dueDate = task.dueDate.plusDays(2))
+        assertEquals(listOf(task), ReviewScheduler.deduplicate(listOf(task, duplicate)))
+        val dueError = observation("r5", "family-c", at.plusSeconds(86400 * 4), LocalDate.parse("2026-11-20"), AttemptOutcome.INCORRECT)
+        val reset = ReviewScheduler.apply(task, dueError)!!
+        assertEquals(0, reset.stage)
+        assertEquals(LocalDate.parse("2026-11-21"), reset.dueDate)
+        assertEquals(3, RecommendationPolicy.create("session", listOf("a", "a", "b", "c"), "unit").size)
+    }
+
+    @Test fun `same commands clock and ids replay to identical state and event facts`() {
+        fun replay(): StudySession {
+            var replayId = 0
+            val deterministic =
+                StudyEngine(
+                    UnitLookup { requested -> unit.takeIf { requested == revision } },
+                    TimeSource { Instant.parse("2026-11-16T12:00:00Z") },
+                    IdSource { "replay-${++replayId}" },
+                )
+            var session = deterministic.startSession("replay-session", revision).getOrThrow()
+            session = assertIs<TransitionResult.Accepted>(deterministic.handle(session, StudyCommand.Continue("replay-next"))).session
+            session =
+                assertIs<TransitionResult.Accepted>(
+                    deterministic.handle(session, StudyCommand.SelectChoice("replay-select", "right")),
+                ).session
+            return assertIs<TransitionResult.Accepted>(deterministic.handle(session, StudyCommand.SubmitChoice("replay-submit"))).session
+        }
+        assertEquals(replay(), replay())
+    }
+
+    @Test fun `attempt snapshots retain the local date and offset used at submission`() {
+        val shifted =
+            StudyEngine(
+                UnitLookup { requested -> unit.takeIf { requested == revision } },
+                TimeSource { Instant.parse("2026-11-16T23:30:00Z") },
+                IdSource { "zone-id" },
+                ZoneSource { ZoneOffset.ofHours(2) },
+            )
+        var session = shifted.startSession("zone-session", revision).getOrThrow()
+        session = assertIs<TransitionResult.Accepted>(shifted.handle(session, StudyCommand.Continue("zone-next"))).session
+        session = assertIs<TransitionResult.Accepted>(shifted.handle(session, StudyCommand.SelectChoice("zone-select", "right"))).session
+        session = assertIs<TransitionResult.Accepted>(shifted.handle(session, StudyCommand.SubmitChoice("zone-submit"))).session
+        val attempt = session.activityProgress("question").attempts.single()
+        assertEquals(LocalDate.parse("2026-11-17"), attempt.localStudyDate)
+        assertEquals(ZoneOffset.ofHours(2), attempt.zoneOffset)
+    }
+
+    private fun observation(
+        id: String,
+        family: String,
+        at: Instant,
+        date: LocalDate,
+        outcome: AttemptOutcome = AttemptOutcome.CORRECT,
+    ) = ObjectiveObservation(
+        id,
+        "objective",
+        "recognition",
+        family,
+        outcome,
+        AssessmentMethod.EXACT_CHOICE,
+        AssistanceSnapshot(),
+        true,
+        at,
+        date,
+        ZoneOffset.UTC,
+    )
+
     private fun accepted(
         session: StudySession,
         command: StudyCommand,
@@ -130,7 +297,15 @@ class StudyEngineTest {
                     "reflection" to Reflection(emptyList(), "end"),
                     "end" to End(emptyList()),
                 )
-            return LearningUnit(StableId("axiora.test.unit"), Revision(0, 1, 0), emptySet(), emptyList(), emptySet(), "intro", activities)
+            return LearningUnit(
+                StableId("axiora.test.unit"),
+                Revision(0, 1, 0),
+                emptySet(),
+                listOf(Objective("objective", StableId("axiora.test.concept"), "recognition")),
+                emptySet(),
+                "intro",
+                activities,
+            )
         }
     }
 }

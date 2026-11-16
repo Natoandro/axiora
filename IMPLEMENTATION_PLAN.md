@@ -1,6 +1,6 @@
 # Axiora implementation plan
 
-**Status:** active execution plan · 16 November 2026. Phases 1 and 2 are complete and M1 is closed; Phase 3 is in progress. See the [implementation status record](IMPLEMENTATION_STATUS.md).
+**Status:** active execution plan · 16 November 2026. Phases 1–3 are complete; M1 and M2 are closed. Phase 4 is next. See the [implementation status record](IMPLEMENTATION_STATUS.md).
 
 This plan turns the [delivery milestones](docs/markdown/delivery.md) into reviewable work. The detailed [content contract](docs/markdown/content.md), [learner-state contract](docs/markdown/learner-state.md), and [decision log](docs/markdown/decisions.md) remain authoritative. A phase is complete only when its observable exit criteria pass; creating directories or screens is insufficient.
 
@@ -19,7 +19,7 @@ No backend, account, cloud synchronization, arbitrary PDF ingestion, general the
 | 0 | M0 — complete | Design, handbook, illustrative fixture, documentation checks | None |
 | 1 | M1 | Strict executable content model and author validation | Phase 0 |
 | 2 | M1 | Reproducible packages and safe archive reader | Phase 1 |
-| 3 | M2 | Deterministic headless study and review engine | Phase 1; Phase 2 for packaged end-to-end verification |
+| 3 | M2 — complete | Deterministic headless study and review engine | Phase 1; Phase 2 for packaged end-to-end verification |
 | 4 | M3 | Durable local storage, import recovery, backup and restore | Phases 2–3 |
 | 5 | M3 | Accessible Android learning loop | Phase 4; rendering spike may begin during Phase 3 |
 | 6 | M4 | Reviewed course slice and local pilot | Phase 5; content drafting begins during Phase 1 |
@@ -83,6 +83,13 @@ Work in this order:
 
 **Outcome:** a complete unit runs deterministically without Android or persistent storage.
 
+### Implementation record
+
+- `learning-core` implements injected unit lookup, clock, local-zone offset, and ID sources; pinned revisions; typed commands and explicit transition errors; immutable choice/proof attempts; assistance snapshots; append-only domain events; and pause/resume/completion transitions.
+- Choice attempts become versioned objective observations with assessment family, first-submission status, assistance, UTC timestamp, local study date, and UTC offset. Only unassisted, first-submission exact-choice recall/recognition outcomes are eligible. Demonstration requires two correct eligible observations from distinct families and local dates at least 24 hours apart. Backward event timestamps suspend promotion; proof self-review stays unassessed.
+- The review policy uses the 1, 3, 7, 14, and 30 day ladder, keeps practice before a due date from advancing it, requires a different family at a due check, resets on an eligible due error, deduplicates by objective/revision/policy, and returns at most three plain-language recommendations. Policies are deterministic functions over supplied facts; storage transactions and durable command receipts remain Phase 4.
+- Domain tests include an end-to-end branching session through incorrect, retry, hinted proof, rubric self-review, reflection, and completion; the skipped-proof completion path; deterministic replay with fixed clock and IDs; distinct-family/date evidence; retry/assistance exclusion; review ladder and deduplication; local-date/zone snapshots; and backward-clock handling.
+
 1. Create `learning-core` with typed commands, session/activity states, immutable attempts, assistance snapshots, events, and explicit transition errors. Inject clock, IDs, and content lookup.
 2. Implement all five activity types. Preserve the first submitted choice branch across retries. Separate proof draft edits, submission, rubric self-review, skipping, and completion.
 3. Return state changes and facts for a storage transaction. Define repeated-command behavior so storage can durably return the original result rather than apply the command twice.
@@ -93,13 +100,14 @@ Work in this order:
 
 **Verification and exit gate:**
 
+- `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon test ktlintCheck` passes for all JVM modules.
 - Deterministic replay produces the same state and events for the same inputs, clock, and IDs.
 - L01, L03, P01, P02, R01, and R02 pass at the domain level; repeated-command semantics for L02 are defined and tested, with durability verified in Phase 4.
 - Completion cannot fabricate proof correctness or demonstrated mastery.
 - Review scheduling and evidence promotion are tested separately, including midnight, elapsed time, zone changes, and backward/forward clock changes.
 - The miniature fixture cannot demonstrate mastery using its single recognition family.
 
-**Handoff:** executable domain engine and acceptance tests. This closes M2.
+**Handoff:** executable domain engine and acceptance tests. M2 is closed. Package-to-engine session installation remains an integration check for a later vertical slice; storage durability is Phase 4.
 
 ## Phase 4 — Preserve learner work and recover safely
 
@@ -184,4 +192,4 @@ Work in this order:
 
 ## Next concrete change
 
-Continue Phase 3 by adding the evidence and review policy to `learning-core`, then run the fixture through correct, incorrect, retry, hinted, skipped, and self-review paths. Keep filesystem installation in Phase 4. Do not describe hashes as authenticated authorship.
+Begin Phase 4 with the SQLite record model and command receipt transaction. Keep filesystem installation in Phase 4. Do not describe hashes as authenticated authorship.

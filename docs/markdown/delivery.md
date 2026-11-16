@@ -2,7 +2,7 @@
 
 ## Build one complete learning loop
 
-Milestones are ordered by risk and evidence, not estimated calendar dates. There is no implementation team, budget, or delivery date established. M0 and M1 are complete; M2, the headless study loop, is in progress. See the [verified implementation status](../../IMPLEMENTATION_STATUS.md).
+Milestones are ordered by risk and evidence, not estimated calendar dates. There is no implementation team, budget, or delivery date established. M0, M1, and M2 are complete; durable storage and Android work have not started. See the [verified implementation status](../../IMPLEMENTATION_STATUS.md).
 
 | Milestone | Deliverable | Exit condition |
 | --- | --- | --- |

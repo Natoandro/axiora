@@ -1,6 +1,6 @@
 # Implementation status
 
-This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1 and 2 are complete; M1 is closed.
+This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–3 are complete; M1 and M2 are closed. Durable learner storage, package installation, Android, and the reviewed course remain later work.
 
 ## Phase 1 — complete
 
@@ -28,10 +28,12 @@ This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION
 
 **Handoff:** deterministic `.axp` artifacts, external build reports with source hashes and diagnostics, a bounded shared reader, revision descriptors, CLI integration, and hostile archive tests. Installation remains Phase 4 work. Hashes establish byte integrity only; they do not authenticate authorship or review claims. Mathematical and teaching review remain outstanding.
 
-## Phase 3 — in progress
+## Phase 3 — complete
 
-**Implemented:** `learning-core` now provides injected unit lookup, clock, and ID sources; pinned unit revisions; typed commands and transition errors; immutable choice and proof attempts; assistance snapshots; learning events; choice retry behavior that preserves the first branch; proof drafts and self-review; rubric recording; reflection, skip, pause, resume, and completion transitions. Reused command IDs are rejected by the domain state; a future storage adapter must keep durable command receipts and return the original result without applying the command again.
+**Implemented:** `learning-core` provides injected unit lookup, clock, local-zone offset, and ID sources; pinned unit revisions; typed commands and transition errors; immutable choice and proof attempts; assistance snapshots; learning events; choice retry behavior that preserves the first branch; proof drafts and self-review; rubric recording; reflection, skip, pause, resume, and completion transitions. Reused command IDs are rejected by the domain state; a future storage adapter must keep durable command receipts and return the original result without applying the command again.
 
-**Verified:** `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon test :compiler-cli:installDist ktlintCheck` — passed on 16 November 2026. The new domain tests cover first-branch preservation across retries, immutable attempts, assistance capture, unassessed proof self-review, proof skipping without fabricated attempts, session completion, and duplicate-command rejection.
+Evidence policy produces versioned observations from exact-choice attempts, retaining objective, skill, assessment family, first-submission flag, assistance, UTC time, local study date, and zone offset. Only unassisted first-submission exact-choice recall/recognition observations are eligible. Demonstration requires two correct observations from distinct families and local dates at least 24 hours apart; proof self-review remains unassessed. Backward timestamps suspend evidence promotion. Review scheduling implements the 1/3/7/14/30-day ladder, due-date-only advancement, fresh-family checks, eligible-error reset, task deduplication, and a three-item recommendation limit.
 
-**Remaining:** objective observations and evidence eligibility, review scheduling and clock-anomaly policy, deterministic replay over the complete fixture, and the headless runner are not implemented. Phase 3 remains open.
+**Verified:** `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon test ktlintCheck` — passed on 16 November 2026. Tests cover incorrect/correct retry with first-branch preservation; hinted proof self-review; skipped-proof completion without fabricated attempts; deterministic replay with fixed IDs and time; evidence eligibility and two-family/two-date/24-hour rules; clock rollback; time-zone date snapshots; review scheduling and deduplication; and recommendations. The end-to-end headless session harness exercises branching, retry, hint, rubric, reflection, and completion paths. Phase 3 exits pass; M2 is closed.
+
+**Remaining:** durable receipts and atomic persistence for repeated commands (Phase 4), package installation into learner storage (Phase 4), and any Android execution remain unimplemented. Mathematical and teaching review of the example content remains outstanding.
