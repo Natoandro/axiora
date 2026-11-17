@@ -5,6 +5,7 @@ import mg.abela.axiora.validation.PackageLimits
 import mg.abela.axiora.validation.PackageRevisionDescriptor
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.time.Instant
 
@@ -97,10 +98,10 @@ class PackageInstaller(
                 discovered += record
             }
         }
-        val installedPaths = discovered.map { Path.of(it.contentLocation).toAbsolutePath().normalize() }.toSet()
+        val installedPaths = discovered.map { Paths.get(it.contentLocation).toAbsolutePath().normalize() }.toSet()
         val missing =
             store.packageRevisions().filter {
-                Path.of(it.contentLocation).toAbsolutePath().normalize() !in installedPaths
+                Paths.get(it.contentLocation).toAbsolutePath().normalize() !in installedPaths
             }
         return ReconciliationReport(discovered.size, missing)
     }

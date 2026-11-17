@@ -34,17 +34,33 @@ class SqliteLearnerStoreTest {
     fun `failed draft write rolls back checkpoint and receipt`() {
         val store = seededStore()
         store.executeCommand("session-1", "first") {
-            commit("first", "first").copy(draft = DraftWrite("proof", "new", 4, "2026-11-17T00:00:00Z"))
+            commit("first", "first").copy(draft = DraftWrite("proof", "original", 1, "2026-11-16T00:00:00Z"))
         }
+        store.executeCommand("session-1", "edit") {
+            commit("edit", "updated").copy(draft = DraftWrite("proof", "new", 4, "2026-11-17T00:00:00Z"))
+        }
+        val updated = store.exportSnapshot()
         assertThrows(IllegalStateException::class.java) {
             store.executeCommand("session-1", "stale") {
                 commit("stale", "must-not-commit").copy(draft = DraftWrite("proof", "old", 3, "2026-11-16T00:00:00Z"))
             }
         }
 
-        assertEquals("first", String(requireNotNull(store.loadSession("session-1")).checkpoint))
+        assertEquals("new", SnapshotJson.decode(updated).getValue("draft").single()["text"])
+        assertArrayEquals(updated, store.exportSnapshot())
         val retry = store.executeCommand("session-1", "stale") { commit("stale", "retry") }
         assertEquals("retry", String(retry.resultPayload))
+    }
+
+    @Test
+    fun `editing a note preserves its creation time`() {
+        val store = seededStore()
+        val original = StoredNote("note", "axiora.unit", null, "proof", "original", "yesterday", "yesterday")
+        val edited = original.copy(revision = "1.0.0", text = "edited", createdAt = "today", modifiedAt = "today")
+
+        assertEquals(1, store.saveNote(original))
+        assertEquals(1, store.saveNote(edited))
+        assertEquals(listOf(edited.copy(createdAt = original.createdAt)), store.notes())
     }
 
     @Test

@@ -6,6 +6,7 @@ import mg.abela.axiora.learning.UnitRevisionRef
 import mg.abela.axiora.validation.PackageArchiveReader
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
@@ -32,20 +33,6 @@ class SqliteLearnerStore(
             require(Regex("[0-9a-f]{64}").matches(revision.manifestSha256)) {
                 "Manifest hash must be lowercase SHA-256 hex."
             }
-            connection
-                .prepareStatement(
-                    """INSERT INTO package_revision(
-                       package_id, package_version, manifest_sha256, content_location, imported_at
-                       ) VALUES (?, ?, ?, ?, ?)
-                       ON CONFLICT(package_id, package_version) DO NOTHING""",
-                ).use { statement ->
-                    statement.setString(1, revision.packageId)
-                    statement.setString(2, revision.packageVersion)
-                    statement.setString(3, revision.manifestSha256)
-                    statement.setString(4, revision.contentLocation)
-                    statement.setString(5, revision.importedAt)
-                    statement.executeUpdate()
-                }
             val savedHash =
                 connection
                     .prepareStatement(
@@ -55,20 +42,41 @@ class SqliteLearnerStore(
                         statement.setString(2, revision.packageVersion)
                         statement.executeQuery().use { rows -> if (rows.next()) rows.getString(1) else null }
                     }
-            if (savedHash != revision.manifestSha256) {
-                throw PackageRevisionConflict(revision.packageId, revision.packageVersion)
-            }
-            connection
-                .prepareStatement(
-                    """UPDATE package_revision SET content_location = ?
-                   WHERE package_id = ? AND package_version = ? AND manifest_sha256 = ?""",
-                ).use { statement ->
-                    statement.setString(1, revision.contentLocation)
-                    statement.setString(2, revision.packageId)
-                    statement.setString(3, revision.packageVersion)
-                    statement.setString(4, revision.manifestSha256)
-                    statement.executeUpdate()
+            when (savedHash) {
+                null -> {
+                    connection
+                        .prepareStatement(
+                            """INSERT INTO package_revision(
+                               package_id, package_version, manifest_sha256, content_location, imported_at
+                               ) VALUES (?, ?, ?, ?, ?)""",
+                        ).use { statement ->
+                            statement.setString(1, revision.packageId)
+                            statement.setString(2, revision.packageVersion)
+                            statement.setString(3, revision.manifestSha256)
+                            statement.setString(4, revision.contentLocation)
+                            statement.setString(5, revision.importedAt)
+                            statement.executeUpdate()
+                        }
                 }
+
+                revision.manifestSha256 -> {
+                    connection
+                        .prepareStatement(
+                            """UPDATE package_revision SET content_location = ?
+                           WHERE package_id = ? AND package_version = ? AND manifest_sha256 = ?""",
+                        ).use { statement ->
+                            statement.setString(1, revision.contentLocation)
+                            statement.setString(2, revision.packageId)
+                            statement.setString(3, revision.packageVersion)
+                            statement.setString(4, revision.manifestSha256)
+                            statement.executeUpdate()
+                        }
+                }
+
+                else -> {
+                    throw PackageRevisionConflict(revision.packageId, revision.packageVersion)
+                }
+            }
         }
 
     /** Deactivation retains immutable bytes and all learner records. Reimport explicitly reactivates. */
@@ -148,23 +156,38 @@ class SqliteLearnerStore(
     fun saveNote(note: StoredNote) =
         transaction { connection ->
             require(note.noteId.isNotBlank() && note.contentId.isNotBlank()) { "Note identity is required." }
-            connection
-                .prepareStatement(
-                    """INSERT INTO note(note_id, content_id, revision, anchor, text, created_at, modified_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(note_id) DO UPDATE SET content_id = excluded.content_id,
-                 revision = excluded.revision, anchor = excluded.anchor, text = excluded.text,
-                 modified_at = excluded.modified_at""",
-                ).use { statement ->
-                    statement.setString(1, note.noteId)
-                    statement.setString(2, note.contentId)
-                    statement.setString(3, note.revision)
-                    statement.setString(4, note.anchor)
-                    statement.setString(5, note.text)
-                    statement.setString(6, note.createdAt)
-                    statement.setString(7, note.modifiedAt)
-                    statement.executeUpdate()
-                }
+            val updated =
+                connection
+                    .prepareStatement(
+                        """UPDATE note SET content_id = ?, revision = ?, anchor = ?, text = ?, modified_at = ?
+                           WHERE note_id = ?""",
+                    ).use { statement ->
+                        statement.setString(1, note.contentId)
+                        statement.setString(2, note.revision)
+                        statement.setString(3, note.anchor)
+                        statement.setString(4, note.text)
+                        statement.setString(5, note.modifiedAt)
+                        statement.setString(6, note.noteId)
+                        statement.executeUpdate()
+                    }
+            if (updated == 1) {
+                updated
+            } else {
+                connection
+                    .prepareStatement(
+                        """INSERT INTO note(note_id, content_id, revision, anchor, text, created_at, modified_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    ).use { statement ->
+                        statement.setString(1, note.noteId)
+                        statement.setString(2, note.contentId)
+                        statement.setString(3, note.revision)
+                        statement.setString(4, note.anchor)
+                        statement.setString(5, note.text)
+                        statement.setString(6, note.createdAt)
+                        statement.setString(7, note.modifiedAt)
+                        statement.executeUpdate()
+                    }
+            }
         }
 
     fun notes(contentId: String? = null): List<StoredNote> =
@@ -353,7 +376,7 @@ class SqliteLearnerStore(
         }
         return packageRevisions().filter { installed ->
             !runCatching {
-                val descriptor = PackageArchiveReader().inspect(Path.of(installed.contentLocation))
+                val descriptor = PackageArchiveReader().inspect(Paths.get(installed.contentLocation))
                 descriptor.packageId == installed.packageId && descriptor.version == installed.packageVersion &&
                     descriptor.manifestSha256 == installed.manifestSha256
             }.getOrDefault(false)
@@ -374,7 +397,7 @@ class SqliteLearnerStore(
                     require(
                         record["content_location"] is String &&
                             runCatching {
-                                Path.of(record["content_location"] as String)
+                                Paths.get(record["content_location"] as String)
                             }.isSuccess,
                     ) { "Backup content location is invalid." }
                 }
@@ -504,23 +527,38 @@ class SqliteLearnerStore(
         sessionId: String,
         draft: DraftWrite,
     ) {
-        val changed =
+        val updated =
+            connection
+                .prepareStatement(
+                    """UPDATE draft SET text = ?, revision = ?, modified_at = ?
+                       WHERE session_id = ? AND activity_id = ? AND revision < ?""",
+                ).use { statement ->
+                    statement.setString(1, draft.text)
+                    statement.setLong(2, draft.revision)
+                    statement.setString(3, draft.modifiedAt)
+                    statement.setString(4, sessionId)
+                    statement.setString(5, draft.activityId)
+                    statement.setLong(6, draft.revision)
+                    statement.executeUpdate()
+                }
+        if (updated == 1) return
+        val inserted =
             connection
                 .prepareStatement(
                     """INSERT INTO draft(session_id, activity_id, text, revision, modified_at)
-               VALUES (?, ?, ?, ?, ?)
-               ON CONFLICT(session_id, activity_id) DO UPDATE SET
-                 text = excluded.text, revision = excluded.revision, modified_at = excluded.modified_at
-               WHERE excluded.revision > draft.revision""",
+                       SELECT ?, ?, ?, ?, ?
+                       WHERE NOT EXISTS (SELECT 1 FROM draft WHERE session_id = ? AND activity_id = ?)""",
                 ).use { statement ->
                     statement.setString(1, sessionId)
                     statement.setString(2, draft.activityId)
                     statement.setString(3, draft.text)
                     statement.setLong(4, draft.revision)
                     statement.setString(5, draft.modifiedAt)
+                    statement.setString(6, sessionId)
+                    statement.setString(7, draft.activityId)
                     statement.executeUpdate()
                 }
-        check(changed == 1) { "Draft revision is stale; the newer saved draft was preserved." }
+        check(inserted == 1) { "Draft revision is stale; the newer saved draft was preserved." }
     }
 
     private fun insertAttempt(

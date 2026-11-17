@@ -9,6 +9,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 data class Diagnostic(
     val code: String,
@@ -45,7 +46,7 @@ internal class ValidationContext {
         relative: String,
         limit: Int,
     ): JsonNode? {
-        val normalized = Path.of(relative)
+        val normalized = Paths.get(relative)
         if (normalized.isAbsolute || normalized.any { it.toString() == ".." } || relative.contains('\\') || relative.isBlank()) {
             error("AXC103", relative, "$", "Unsafe relative path.")
             return null

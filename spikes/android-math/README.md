@@ -32,13 +32,13 @@ Record Android version, viewport, font scale, assistive technology, and the obse
 
 ## Storage follow-up
 
-Use API 26 as the candidate minimum because the installer already uses the Android API 26 `java.nio.file` surface. Audit individual calls before adopting it. For example, the current installer and validator use `Path.of`, which needs an Android-compatible replacement or verified desugaring. [Android file APIs](https://developer.android.com/reference/java/nio/file/Files)
+Use API 26 as the candidate minimum because the installer uses the Android API 26 `java.nio.file` surface. Path parsing in the installer, validator, and restore now uses `Paths.get`. Audit the remaining calls and dependencies on the candidate minimum before adopting it. [Android file APIs](https://developer.android.com/reference/java/nio/file/Files)
 
 Evaluate framework SQLite via `SQLiteOpenHelper` as the Android driver. Reuse the Phase 4 schema and record codecs where possible. Confirm SQL support on the minimum API and verify foreign-key enforcement, atomic command receipts and checkpoints, migration, rollback, and backup interoperability before wiring the app. Then test a debounced edit and explicit save across force-stop and reopen. [Android SQLiteOpenHelper API](https://developer.android.com/reference/android/database/sqlite/SQLiteOpenHelper)
 
 ## Results
 
-APK compilation, packaging, and signature verification passed. The original Pixel 3a API 30 AVD stalled before boot. A fresh Pixel 3a AVD using the same API 30 x86 Play Store image completed boot with SwiftShader. The APK installed and launched, and the UI hierarchy contained both expected previews, the fraction fallback diagnostic, and its LaTeX source. TalkBack and Android SQLite behavior remain unverified.
+APK compilation, packaging, and signature verification passed. The original Pixel 3a API 30 AVD stalled before boot. A fresh Pixel 3a AVD using the same API 30 x86 Play Store image completed boot with SwiftShader. The APK installed and launched, and the UI hierarchy contained both expected previews, the fraction fallback diagnostic, and its LaTeX source. See the [implementation record](../../IMPLEMENTATION_STATUS.md#phase-5--android-rendering-and-storage-compatibility) for the separate framework SQLite probe.
 
 On the visible `Axiora_Pixel_3a_API_30` emulator, the long expression wrapped at a 320 dp viewport and 2.0 font scale. Vertical scrolling reached the fraction fallback and its full source. The first two Tab presses focused the membership preview and then its source. The emulator's display and font settings were restored after the check. TalkBack was unavailable on that image.
 
