@@ -1,0 +1,10 @@
+[package]
+name = "texlet-svg"
+version = "0.1.0"
+edition = "2024"
+description = "SVG adapter for Texlet math layouts"
+publish = false
+
+[dependencies]
+texlet = { path = "../texlet" }
+ttf-parser = "0.25.1"

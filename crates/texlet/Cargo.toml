@@ -1,0 +1,9 @@
+[package]
+name = "texlet"
+version = "0.1.0"
+edition = "2024"
+description = "A small typesetting engine for LaTeX math expressions"
+publish = false
+
+[dependencies]
+ttf-parser = "0.25.1"

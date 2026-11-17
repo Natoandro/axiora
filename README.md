@@ -68,6 +68,17 @@ Validation and packaging read the unpacked fixture without rewriting it. Packagi
 
 `check_docs.py` checks local Markdown/HTML links and fragments, the example's file hashes and documented semantic invariants. It is a documentation check, not a production package validator or mathematical proof checker.
 
+## Rust math engine
+
+[Texlet](crates/texlet/Cargo.toml) lays out a small subset of LaTeX math using glyph IDs from a caller-provided font. [Texlet SVG](crates/texlet-svg/Cargo.toml) draws the layout as self-contained SVG paths. See the [notation roadmap](crates/texlet/ROADMAP.md) for supported and planned syntax.
+
+```sh
+cargo test --workspace --offline
+./scripts/preview_texlet.sh 'x \in \mathbb{Z}' '\mathbb{Q}'
+```
+
+Quote each expression separately. The script finds Latin Modern Math through Fontconfig. To use another font or run without Fontconfig, pass `--font /path/to/math-font.otf` before the expressions. The script prints the paths to uniquely named SVGs directly in the gitignored `texlet-previews/` directory. Open the SVGs in a browser. Supply an accessible description when embedding them.
+
 ## Proposed first release
 
 One manually authored course slice teaches the distinction between prime and maximal ideals. A learner can import it, work through a branching lesson, write and resume a proof, compare it with a rubric, and return for review, all offline. The first implementation should prove that complete loop before adding automatic textbook ingestion or open-ended AI grading.

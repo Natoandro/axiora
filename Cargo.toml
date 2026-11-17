@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/texlet", "crates/texlet-svg"]
+resolver = "3"
