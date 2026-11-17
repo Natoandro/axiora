@@ -26,7 +26,7 @@ public final class MathActivity extends Activity {
         setContentView(scroll);
 
         font = loadFont();
-        heading("Texlet · Tier 0");
+        heading("Texlet · Tier 1");
         example("Ideal membership", "a \\in I", "a belongs to the ideal I.");
         example("Quotient ring", "\\mathbb{Z}/(0)", "The integers modulo the zero ideal.");
         example("Number sets", "2 \\in \\mathbb{N}, -2 \\in \\mathbb{Z}, 1/2 \\in \\mathbb{Q}",
@@ -40,15 +40,37 @@ public final class MathActivity extends Activity {
             "a \\in I, b \\in I, c \\in I, d \\in I, e \\in I, f \\in I",
             "Each of a, b, c, d, e, and f belongs to the ideal I."
         );
-        example("Unsupported notation", "\\frac{a}{b}", "a divided by b.");
+        example("Nested fraction and indexed root", "\\frac{1+x_i^2}{\\sqrt[3]{1+\\frac{x}{2}}}",
+            "One plus x sub i squared, divided by the cube root of one plus x over two.", true);
+        example("Greek letters and primes", "{\\varphi}''(x) + \\alpha\\cdot\\beta \\approx \\pi",
+            "Phi double prime of x plus alpha times beta is approximately pi.");
+        example("Math alphabets and text",
+            "\\mathbb{RQ}\\quad\\mathbf{v}\\;\\mathit{dx}\\;\\mathrm{d}x\\;\\mathsf{A}\\;\\mathtt{id}\\;\\mathcal{F}",
+            "Blackboard bold R Q, bold v, italic d x, upright d followed by x, sans serif A, monospace i d, and calligraphic F.");
+        example("Delimiters and named operator",
+            "\\left\\lVert\\frac{x}{2}\\right\\rVert \\leq \\operatorname{norm}\\bigl(x\\bigr)",
+            "The norm of x over two is less than or equal to the norm of x.", true);
+        String sum = "\\sum_{k=1}^{n} k = \\frac{n(n+1)}{2}";
+        example("Sum with inline limits", sum, "The sum from k equals one to n of k equals n times n plus one over two.");
+        example("Sum with display limits", sum, "The same identity with limits above and below the sum.", true);
+        example("Side limits and spacing", "\\int_0^1 x^2\\,\\mathrm{d}x = \\frac{1}{3}\\quad\\text{for real }x",
+            "The integral from zero to one of x squared is one third, for real x.", true);
+        example("Sets, logic, and arrows",
+            "A\\subseteq B \\implies (x\\in A \\Rightarrow x\\in B)",
+            "If A is a subset of B, then membership in A implies membership in B.");
+        example("Unsupported notation", "\\binom{n}{k}", "n choose k.");
     }
 
     private void example(String title, String source, String explanation) {
+        example(title, source, explanation, false);
+    }
+
+    private void example(String title, String source, String explanation, boolean display) {
         heading(title);
         MathCanvas preview = null;
         if (font != null) {
             try {
-                preview = MathCanvas.create(this, font, source);
+                preview = MathCanvas.create(this, font, source, display);
             } catch (LinkageError error) {
                 android.util.Log.w("Texlet", "Native renderer unavailable", error);
                 font = null;

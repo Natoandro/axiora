@@ -15,12 +15,12 @@ final class MathCanvas extends View {
         System.loadLibrary("texlet_canvas");
     }
 
-    private static native float[] nativeLayout(byte[] font, byte[] source, float textSize);
+    private static native float[] nativeLayout(byte[] font, byte[] source, float textSize, boolean display);
 
-    static MathCanvas create(Context context, byte[] font, String source) {
+    static MathCanvas create(Context context, byte[] font, String source, boolean display) {
         float size = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP, 22, context.getResources().getDisplayMetrics());
-        float[] commands = nativeLayout(font, source.getBytes(StandardCharsets.UTF_8), size);
+        float[] commands = nativeLayout(font, source.getBytes(StandardCharsets.UTF_8), size, display);
         return commands == null ? null : new MathCanvas(context, commands);
     }
 

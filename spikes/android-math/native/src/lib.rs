@@ -1,7 +1,7 @@
 //! Converts Texlet's glyphs and rules to Canvas coordinates for the JNI shim.
 
 use std::{ptr, slice, str};
-use texlet::{DrawCommand, LayoutOptions, MathFont, layout};
+use texlet::{DrawCommand, LayoutOptions, MathFont, MathStyle, layout_with_style};
 use ttf_parser::{Face, GlyphId, OutlineBuilder};
 
 #[repr(C)]
@@ -19,15 +19,16 @@ pub unsafe extern "C" fn texlet_canvas_layout(
     source: *const u8,
     source_len: usize,
     size: f32,
+    display: u8,
 ) -> CanvasBuffer {
     let render = || {
-        if font.is_null() || source.is_null() || source_len > 4096 {
+        if font.is_null() || source.is_null() {
             return None;
         }
         // JNI holds both arrays until layout returns.
         let font = unsafe { slice::from_raw_parts(font, font_len) };
         let source = str::from_utf8(unsafe { slice::from_raw_parts(source, source_len) }).ok()?;
-        canvas_commands(font, source, size)
+        canvas_commands(font, source, size, display != 0)
     };
     match render() {
         Some(values) => {
@@ -55,13 +56,18 @@ pub unsafe extern "C" fn texlet_canvas_free(buffer: CanvasBuffer) {
     }
 }
 
-fn canvas_commands(bytes: &[u8], source: &str, size: f32) -> Option<Vec<f32>> {
+fn canvas_commands(bytes: &[u8], source: &str, size: f32, display: bool) -> Option<Vec<f32>> {
     let font = MathFont::from_bytes(bytes, 0).ok()?;
-    let layout = layout(
+    let layout = layout_with_style(
         source,
         &font,
         LayoutOptions {
             font_size: f64::from(size),
+        },
+        if display {
+            MathStyle::Display
+        } else {
+            MathStyle::Inline
         },
     )
     .ok()?;

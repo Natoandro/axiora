@@ -16,14 +16,29 @@ toolchain="$ndk/toolchains/llvm/prebuilt/$host/bin"
 tools="$sdk/build-tools/36.1.0"
 platform="$sdk/platforms/android-33/android.jar"
 font="${TEXLET_MATH_FONT:-}"
+font_doc_dir=
+font_readme=
 if [[ -z "$font" ]] && command -v fc-match >/dev/null; then
-    match=$(fc-match -f '%{family[0]}\n%{file}' 'Latin Modern Math')
-    if [[ "$match" == "Latin Modern Math"$'\n'* ]]; then
-        font=${match#*$'\n'}
-    fi
+    for family in 'TeX Gyre Termes Math' 'Latin Modern Math'; do
+        match=$(fc-match -f '%{family[0]}\n%{file}' "$family")
+        if [[ "$match" == "$family"$'\n'* && -r "${match#*$'\n'}" ]]; then
+            font=${match#*$'\n'}
+            case "$family" in
+                'TeX Gyre Termes Math')
+                    font_doc_dir=/usr/share/texmf/doc/fonts/tex-gyre-math
+                    font_readme=README-TeX-Gyre-Termes-Math.txt
+                    ;;
+                'Latin Modern Math')
+                    font_doc_dir=/usr/share/texmf/doc/fonts/lm-math
+                    font_readme=README-Latin-Modern-Math.txt
+                    ;;
+            esac
+            break
+        fi
+    done
 fi
 if [[ ! -r "$font" ]]; then
-    echo "Install Latin Modern Math or set TEXLET_MATH_FONT to a local OpenType font." >&2
+    echo "Install TeX Gyre Termes Math or Latin Modern Math, or set TEXLET_MATH_FONT." >&2
     exit 2
 fi
 if ! command -v cargo >/dev/null && [[ -x "$HOME/.cargo/bin/cargo" ]]; then
@@ -36,11 +51,10 @@ mkdir "$work/assets" "$work/classes"
 cp -- "$font" "$work/assets/math.otf"
 if [[ -n "${TEXLET_MATH_FONT_NOTICE:-}" ]]; then
     cp -- "$TEXLET_MATH_FONT_NOTICE" "$work/assets/math-font-notice.txt"
-elif [[ -z "${TEXLET_MATH_FONT:-}" ]]; then
-    notice=/usr/share/texmf/doc/fonts/lm-math
-    for file in GUST-FONT-LICENSE.txt README-Latin-Modern-Math.txt; do
-        if [[ -r "$notice/$file" ]]; then
-            cp -- "$notice/$file" "$work/assets/"
+elif [[ -n "$font_doc_dir" ]]; then
+    for file in GUST-FONT-LICENSE.txt "$font_readme"; do
+        if [[ -r "$font_doc_dir/$file" ]]; then
+            cp -- "$font_doc_dir/$file" "$work/assets/"
         fi
     done
 fi
