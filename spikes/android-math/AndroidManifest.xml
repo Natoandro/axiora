@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="mg.abela.axiora.mathspike">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="33" />
+    <application android:allowBackup="false" android:label="Axiora math spike"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name=".MathActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

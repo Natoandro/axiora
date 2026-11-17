@@ -1,6 +1,6 @@
 # Implementation status
 
-This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. M3 remains open pending Phase 5; Android and the reviewed course remain later work.
+This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. Phase 5 has started with an Android renderer prototype. M3 remains open and course review remains pending.
 
 ## Phase 1 — complete
 
@@ -65,3 +65,7 @@ Evidence policy produces versioned observations from exact-choice attempts, reta
 - `UV_CACHE_DIR=/tmp/axiora-uv-cache uv run --locked python scripts/check_docs.py` — passed.
 
 **Remaining outside Phase 4:** Android driver compatibility, file-selection and privacy UI, visible save status, actual Android force-stop/lifecycle behavior, device accessibility, and renderer integration remain Phase 5. JVM process termination does not establish Android acceptance or power-loss/filesystem durability on every device. Missing content prevents session resume until exact content is available; historical attempt snapshots and notes remain readable. Older schema-1 attempts cannot recover unsaved prompt context. Mathematical and teaching review remain outstanding. No Android application, AI integration, or reviewed course is claimed.
+
+## Phase 5 — Android renderer spike in progress
+
+The [Android math spike](spikes/android-math/README.md) builds and signs an isolated APK with the installed SDK. It exercises native text previews for fixture notation, plain-language descriptions, selectable source, and an unsupported-formula fallback. APK signature verification passed. The original Pixel 3a API 30 AVD stalled before boot. A fresh AVD using the same system image reached boot completion, installed and launched the APK, and exposed both expected previews and the unsupported-formula fallback in the UI hierarchy. On the visible API 30 emulator, the long preview wrapped at 320 dp and 2.0 font scale, the fallback remained reachable by scrolling, and two Tab presses reached the first preview and its source. TalkBack, tablet coverage, and the typeset renderer remain unverified. API 26 and framework SQLite are candidates for the study app. Neither the storage adapter nor lifecycle integration has been verified on Android.
