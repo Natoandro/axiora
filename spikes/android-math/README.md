@@ -2,17 +2,22 @@
 
 This one-screen prototype uses fixed examples from the [illustrative course](../../examples/prime-and-maximal/README.md) and a fraction to exercise fallback. The build is independent of the JVM Gradle modules.
 
-The candidate preview supports the fixture's flat expressions, including `\in` and `\mathbb{Z}`, with native Unicode text. Each example includes a plain-language reading and selectable LaTeX source. Unsupported syntax or a missing symbol glyph produces a diagnostic and leaves the source available. The prototype requires no WebView, package parser, or network permission. [Android selectable text API](https://developer.android.com/reference/android/widget/TextView#setTextIsSelectable(boolean))
+The preview uses Texlet through JNI to lay out the fixture's flat expressions, including `\in` and `\mathbb{Z}`. The native adapter translates font glyph IDs into outlines and returns drawing coordinates. Android draws those with Canvas at the user's scaled text size. Long expressions can scroll horizontally. Each example has a plain-language reading and selectable LaTeX source. Unsupported syntax, a missing glyph, or a renderer startup failure leaves the source available. The APK bundles its font and runs offline. [Android Canvas API](https://developer.android.com/reference/android/graphics/Canvas)
 
 ## Build and launch
 
-Use JDK 17 or newer, Android SDK Platform 33, and Build Tools 36.1.0. Set `ANDROID_HOME` to the SDK path. A build signs the APK with a temporary key. Use a fresh emulator or uninstall the earlier spike build before installing a newly signed copy.
+Use JDK 17 or newer, Android SDK Platform 33, Build Tools 36.1.0, and NDK 29.0.14206865. Set `ANDROID_HOME` to the SDK path. The build uses the NDK's API 26 Clang targets to link Rust and the JNI shim, then packages one shared library per ABI. To use a different NDK installation, set `ANDROID_NDK_HOME`. [Android NDK toolchain guide](https://developer.android.com/ndk/guides/other_build_systems) · [Rust Android targets](https://doc.rust-lang.org/rustc/platform-support/android.html)
 
 ```sh
+rustup target add i686-linux-android x86_64-linux-android aarch64-linux-android
 bash spikes/android-math/build.sh
-adb install build/android-math-spike/android-math-spike.apk
+adb install -r build/android-math-spike/android-math-spike.apk
 adb shell am start -W -n mg.abela.axiora.mathspike/.MathActivity
 ```
+
+For an x86-only build, set `TEXLET_ANDROID_ABIS=x86` and install just the corresponding Rust target. The default includes x86, x86_64, and ARM64. The script finds locally installed Latin Modern Math via Fontconfig. Set `TEXLET_MATH_FONT` to use an explicit font file and `TEXLET_MATH_FONT_NOTICE` to include its accompanying notice. The Debian Latin Modern Math notices are included when the default font is found and those notices are installed.
+
+Rebuilds reuse the debug key in the build output directory. An APK signed with the old spike's temporary key cannot be updated in place with the new key. Use a fresh emulator for the first install if you want to keep the older APK installed.
 
 ## Device checks
 
@@ -37,8 +42,8 @@ APK compilation, packaging, and signature verification passed. The original Pixe
 
 On the visible `Axiora_Pixel_3a_API_30` emulator, the long expression wrapped at a 320 dp viewport and 2.0 font scale. Vertical scrolling reached the fraction fallback and its full source. The first two Tab presses focused the membership preview and then its source. The emulator's display and font settings were restored after the check. TalkBack was unavailable on that image.
 
-## Candidate for typeset mathematics
+The Canvas revision was built and signed for x86, x86_64, and ARM64. A side-by-side x86 test APK launched on the API 30 Pixel 3a emulator. The screenshot showed the membership and quotient-ring formulas, the long expression, and readable source under the fraction fallback. The UI hierarchy exposed the readings and source. API 26, ARM64 device rendering, TalkBack, and tablet behavior remain to be checked on this revision.
 
-Evaluate bundled KaTeX for fractions, superscripts, and subscripts alongside the fixture's membership and integer symbols. KaTeX can emit HTML for visual layout and MathML for assistive technology. Verify speech and focus in Android WebView before relying on that output. Keep the native plain-language reading and selectable source available. [KaTeX rendering options](https://katex.org/docs/options.html)
+## Notation follow-up
 
-Run the candidate against a small command allowlist with bounded input and macro expansion. Use only app-bundled assets, disable external navigation and file access, and expose no native JavaScript bridge. Treat imported TeX as text and return to the native fallback if parsing, rendering, or asset loading fails. These are acceptance checks for a future adapter. [Renderer architecture](../../docs/markdown/architecture.md)
+Extend Texlet with the structural notation listed in the [notation roadmap](../../crates/texlet/ROADMAP.md). Fractions currently exercise the readable source fallback. Before using the adapter with imported lessons, check the initial allowlist, bounded input, and fallback against the renderer contract. [Renderer architecture](../../docs/markdown/architecture.md)

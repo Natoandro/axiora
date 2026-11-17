@@ -1,3 +1,3 @@
 [workspace]
-members = ["crates/texlet", "crates/texlet-svg"]
+members = ["crates/texlet", "crates/texlet-svg", "spikes/android-math/native"]
 resolver = "3"

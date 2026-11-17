@@ -10,6 +10,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "texlet-android-spike"
+version = "0.1.0"
+dependencies = [
+ "texlet",
+ "ttf-parser",
+]
+
+[[package]]
 name = "texlet-svg"
 version = "0.1.0"
 dependencies = [
