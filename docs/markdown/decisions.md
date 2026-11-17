@@ -136,7 +136,7 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 
 ## ADR-012 â€” Relational learner records and durable command receipts
 
-**Status:** adopted for the Phase 4 JVM storage adapter; Android integration remains unverified.
+**Status:** adopted for the JVM learner repository. Phase 5 also implements a framework SQLite driver. Android application integration remains pending.
 
 **Problem:** The headless engine can produce a new checkpoint, attempts, and events, but process restart currently loses them and replaying a command can apply it twice.
 
@@ -144,6 +144,8 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 
 **Phase 4 completion:** Schema 2 adds active-library membership and readable attempt context. Removal retains content and learner work; reimport reactivates explicitly. The application supplies prompt/key/rubric snapshots to the repository. Schema-1 records migrate with explicit unavailable-context text rather than invented historical detail. Backup format 2 accepts format-1 records with those defaults. Failed database registration leaves a validated promoted archive for startup reconciliation; exception and hard JVM-termination tests cover recovery. The phase introduces no evidence transfer across revisions.
 
-**Tradeoff:** Result and checkpoint payload encoding remain application responsibilities, and this initial JDBC adapter does not establish Android runtime compatibility. The Android storage driver and lifecycle behavior must be selected and verified during the Android phase while preserving the transaction and schema invariants.
+**Phase 5 driver:** Use the Android framework SQLite API to reuse the schema, migrations, and backup format without packaging JDBC. The driver enables foreign-key enforcement and uses immediate transactions for writes. The application owns the driver and must run storage calls off the UI thread.
+
+**Tradeoff:** Result and checkpoint payload encoding remain application responsibilities. Android cursor window limits can affect large records even when SQLite accepts their writes. Validate the supported record sizes and the minimum Android version before app acceptance.
 
 **Reopen when:** Android compatibility or migration evidence requires a different driver or schema. Keep durable command identity, atomic primary-record writes, and immutable package identity across any replacement.

@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="mg.abela.axiora.sqliteadapterprobe">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="33" />
+    <application android:allowBackup="false" android:label="Axiora storage probe" />
+    <instrumentation android:name="mg.abela.axiora.storage.android.StorageProbe"
+        android:targetPackage="mg.abela.axiora.sqliteadapterprobe" />
+</manifest>

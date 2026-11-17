@@ -4,7 +4,7 @@ An offline mathematics learning environment for developing independent reasoning
 
 Axiora combines guided study, examples and counterexamples, proof practice, and deliberate review. Its core works without an account, network connection, or language model. AI may help authors prepare content and may eventually offer optional tutoring; it does not certify mathematical correctness.
 
-**Project status: partial implementation.** The Kotlin content model, validator, reproducible package CLI, deterministic headless study/review engine, and Phase 4 SQLite repository, package installer, and backup/restore code are present. Phases 1–4 pass their JVM acceptance gates, including crash recovery, migration, and backup tests. There is no Android application or AI integration yet. The documents distinguish verified behavior from proposed requirements.
+**Project status: partial implementation.** Phases 1–4 passed their JVM acceptance gates for content validation, packaging, study, and durable learner records. Phase 5 has an Android math spike and a [framework SQLite driver](android-storage/README.md) verified on an API 30 emulator. The Android study app and AI integration remain future work. See the [implementation record](IMPLEMENTATION_STATUS.md) for verified scope.
 
 ## Read the design
 
