@@ -14,11 +14,16 @@ class PackageInstaller(
     private val store: SqliteLearnerStore,
     private val reader: PackageArchiveReader = PackageArchiveReader(),
     private val now: () -> Instant = Instant::now,
+    private val fault: (String) -> Unit = {},
 ) {
     private val packages = library.resolve("packages")
 
     fun install(archive: Path): PackageInstallResult {
         val descriptor = reader.inspect(archive)
+        val registered = store.packageRevisions().find { it.packageId == descriptor.packageId && it.packageVersion == descriptor.version }
+        require(registered == null || registered.manifestSha256 == descriptor.manifestSha256) {
+            "Different package bytes are registered for ${descriptor.packageId}@${descriptor.version}."
+        }
         val directory = revisionDirectory(descriptor)
         Files.createDirectories(packages)
         val packageDirectory = directory.parent
@@ -38,13 +43,15 @@ class PackageInstaller(
                 "Different package bytes already exist for ${descriptor.packageId}@${descriptor.version}."
             }
             store.registerPackage(record(descriptor, installedArchive))
+            store.setPackageActive(descriptor.packageId, descriptor.version, true)
             return PackageInstallResult(descriptor, installedArchive, alreadyInstalled = true)
         }
 
         val staging = Files.createTempFile(directory, ".import-", ".tmp")
-        var promoted = false
         try {
+            fault("staging")
             copyBounded(archive, staging)
+            fault("copied")
             val stagedDescriptor = reader.inspect(staging)
             require(
                 stagedDescriptor.manifestSha256 == descriptor.manifestSha256 &&
@@ -52,14 +59,15 @@ class PackageInstaller(
             ) {
                 "Package changed while it was being imported."
             }
+            fault("validated")
             Files.move(staging, installedArchive, ATOMIC_MOVE)
-            promoted = true
+            fault("promoted")
             store.registerPackage(record(descriptor, installedArchive))
+            store.setPackageActive(descriptor.packageId, descriptor.version, true)
+            fault("registered")
             return PackageInstallResult(descriptor, installedArchive, alreadyInstalled = false)
-        } catch (error: Throwable) {
-            if (promoted) Files.deleteIfExists(installedArchive)
-            throw error
         } finally {
+            // Promoted archives remain recoverable by reconciliation after registration failure.
             Files.deleteIfExists(staging)
         }
     }
@@ -70,7 +78,15 @@ class PackageInstaller(
         require(!Files.isSymbolicLink(packages)) { "Package library path cannot be a symbolic link." }
         val discovered = mutableListOf<InstalledPackage>()
         Files.walk(packages).use { paths ->
-            paths.filter { Files.isRegularFile(it) && it.fileName.toString() == "content.axp" }.forEach { path ->
+            paths.forEach { path ->
+                require(!Files.isSymbolicLink(path)) { "Package library cannot contain symbolic links." }
+                if (Files.isRegularFile(path) && path.fileName.toString().startsWith(".import-") &&
+                    path.fileName.toString().endsWith(".tmp")
+                ) {
+                    Files.delete(path)
+                    return@forEach
+                }
+                if (!Files.isRegularFile(path) || path.fileName.toString() != "content.axp") return@forEach
                 val descriptor = reader.inspect(path)
                 val expected = revisionDirectory(descriptor).resolve("content.axp").toAbsolutePath().normalize()
                 require(path.toAbsolutePath().normalize() == expected) {

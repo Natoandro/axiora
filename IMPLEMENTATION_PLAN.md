@@ -1,6 +1,6 @@
 # Axiora implementation plan
 
-**Status:** active execution plan · 17 November 2026. Phases 1–3 are complete; M1 and M2 are closed. Phase 4 implementation and focused storage checks are complete; full acceptance coverage remains open. See the [implementation status record](IMPLEMENTATION_STATUS.md).
+**Status:** active execution plan · 17 November 2026. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. Android/device validation remains Phase 5 and keeps M3 open. See the [implementation status record](IMPLEMENTATION_STATUS.md).
 
 This plan turns the [delivery milestones](docs/markdown/delivery.md) into reviewable work. The detailed [content contract](docs/markdown/content.md), [learner-state contract](docs/markdown/learner-state.md), and [decision log](docs/markdown/decisions.md) remain authoritative. A phase is complete only when its observable exit criteria pass; creating directories or screens is insufficient.
 
@@ -113,13 +113,13 @@ Work in this order:
 
 **Outcome:** the same engine runs over durable SQLite records and immutable package storage.
 
-### Implementation record — in progress
+### Implementation record — complete at the JVM layer
 
-- The `storage` JVM module uses SQLite JDBC 3.54.1.0 and schema version 1. It stores immutable package revisions, pinned sessions, command results, drafts, attempts, ordered events, observations, summaries, review tasks, and notes.
+- The `storage` JVM module uses SQLite JDBC 3.54.1.0 and schema version 2. It stores immutable package revisions, pinned sessions, command results, drafts, attempts, ordered events, observations, summaries, review tasks, and notes.
 - `StudyRepository` now connects `StudyEngine` to the transaction API. A binary versioned checkpoint codec resolves exact pinned content through `UnitLookup`; a versioned result codec preserves accepted/rejected command results. Durable receipt lookup happens before reduction. The transaction commits the checkpoint, draft, attempts, observations, events, summary invalidations, and versioned result together. Draft updates require a strictly newer revision.
 - `PackageInstaller` validates the archive, stages it under the library, atomically promotes the immutable revision, and registers it in SQLite. Startup reconciliation registers promoted archives after a crash and reports database records whose archive is missing. The application-level JSON backup contains learner records and content references, excludes package bytes, enforces size and shape limits, and restores only into an empty profile. Note persistence is exposed through the store.
-- Added real-SQLite tests for checkpoint/result round trips, duplicate command replay, stale-draft rollback, backup/restore refusal, package idempotence, package identity conflict, and reconciliation. `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon :storage:ktlintFormat :storage:test :storage:ktlintCheck` passed on 17 November 2026. The adapter is JVM-only; Android driver compatibility and lifecycle integration remain unverified. See [ADR-012](docs/markdown/decisions.md#adr-012--relational-learner-records-and-durable-command-receipts).
-- Phase 4 remains open pending broader transaction and filesystem fault-injection coverage, backup round trips across all record types and missing packages, and the full D01–D03 import/update/removal acceptance paths.
+- Real-SQLite tests now cover every command-write boundary, draft rollback and revision ordering, durable replay after reopen/restore, all backup record types, missing packages, corrupt/nonempty restore refusal, version-1 backup compatibility, and a frozen populated schema-1 migration fixture. Installer tests cover staging/copy/validation/promotion/registration failures, identity conflicts, updates, active-library removal, reconciliation, and abandoned staging cleanup. Separate JVMs halt during a draft transaction and after archive promotion to verify recovery without cleanup callbacks.
+- The full `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon test ktlintCheck` acceptance gate passed on 17 November 2026; see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for scenario coverage and limits. The adapter remains JVM-only; Android driver, UI save indicators, and lifecycle integration remain Phase 5. See [ADR-012](docs/markdown/decisions.md#adr-012--relational-learner-records-and-durable-command-receipts).
 
 1. Implement the `storage` adapter and versioned relational schema for package revisions, sessions, command results, drafts, attempts, events, observations, summaries, reviews, and notes.
 2. Commit command results, primary records, checkpoint changes, and projection updates or invalidations atomically. Enforce command-ID uniqueness and monotonically increasing draft revisions.
@@ -200,4 +200,4 @@ Work in this order:
 
 ## Next concrete change
 
-Expand fault-injection coverage across transaction writes and filesystem promotion, then verify backup round trips for attempts, assistance, notes, command IDs, and missing packages. Keep Android driver and lifecycle checks in Phase 5. Do not describe hashes as authenticated authorship.
+Begin Phase 5 with the mathematical-rendering and accessibility spike. Select and verify the Android SQLite adapter and lifecycle integration before building the complete UI. Keep M3 open until the recorded device acceptance gate passes. Do not describe hashes as authenticated authorship.

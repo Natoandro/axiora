@@ -142,6 +142,8 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 
 **Decision:** Store learner records in a versioned SQLite schema. The JVM adapter uses Xerial SQLite JDBC 3.54.1.0. A command transaction checks its durable receipt before invoking the transition callback, then commits the checkpoint, optional draft, attempts, events, projection invalidations, and versioned result payload together. Replays return the original payload. Package revisions are unique by package ID and version; a different manifest hash is a conflict.
 
+**Phase 4 completion:** Schema 2 adds active-library membership and readable attempt context. Removal retains content and learner work; reimport reactivates explicitly. The application supplies prompt/key/rubric snapshots to the repository. Schema-1 records migrate with explicit unavailable-context text rather than invented historical detail. Backup format 2 accepts format-1 records with those defaults. Failed database registration leaves a validated promoted archive for startup reconciliation; exception and hard JVM-termination tests cover recovery. The phase introduces no evidence transfer across revisions.
+
 **Tradeoff:** Result and checkpoint payload encoding remain application responsibilities, and this initial JDBC adapter does not establish Android runtime compatibility. The Android storage driver and lifecycle behavior must be selected and verified during the Android phase while preserving the transaction and schema invariants.
 
 **Reopen when:** Android compatibility or migration evidence requires a different driver or schema. Keep durable command identity, atomic primary-record writes, and immutable package identity across any replacement.

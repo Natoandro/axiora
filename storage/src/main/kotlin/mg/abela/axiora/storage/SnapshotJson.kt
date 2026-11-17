@@ -16,7 +16,7 @@ internal object SnapshotJson {
                 .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
                 .build(),
         )
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     fun encode(tables: Map<String, List<Map<String, Any?>>>): ByteArray {
         val root = mapper.createObjectNode().put("format", "axiora-learner-backup").put("version", VERSION)
@@ -39,43 +39,79 @@ internal object SnapshotJson {
     }
 
     fun decode(bytes: ByteArray): Map<String, List<Map<String, Any?>>> {
-        val root = mapper.readTree(bytes)
+        val root =
+            mapper.factory.createParser(bytes).use { parser ->
+                val tree = mapper.readTree<JsonNode>(parser)
+                require(parser.nextToken() == null) { "Backup has trailing data." }
+                tree
+            }
         require(root is ObjectNode && root.size() == 3) { "Backup envelope is invalid." }
-        require(root.path("format").asText() == "axiora-learner-backup" && root.path("version").asInt() == VERSION) {
+        require(
+            root.path("format").asText() == "axiora-learner-backup" && root.path("version").isInt &&
+                root.path("version").intValue() in 1..VERSION,
+        ) {
             "Backup format version is unsupported."
         }
         val tableObject = root.path("tables")
         require(tableObject is ObjectNode) { "Backup table data is invalid." }
-        return tableObject.fields().asSequence().associate { (table, node) ->
-            require(node.isArray) { "Backup table '$table' is invalid." }
-            table to
-                node.map { record ->
-                    require(record is ObjectNode) { "Backup record in '$table' is invalid." }
-                    record.fields().asSequence().associate { (key, value) ->
-                        val decoded = value(value)
-                        key to
-                            if (key in BLOB_COLUMNS) {
-                                require(decoded is String) { "Backup binary field is invalid." }
-                                try {
-                                    Base64.getDecoder().decode(decoded)
-                                } catch (_: IllegalArgumentException) {
-                                    throw IllegalArgumentException("Backup binary field is invalid.")
+        val decodedTables =
+            tableObject.fields().asSequence().associate { (table, node) ->
+                require(node.isArray) { "Backup table '$table' is invalid." }
+                table to
+                    node.map { record ->
+                        require(record is ObjectNode) { "Backup record in '$table' is invalid." }
+                        record.fields().asSequence().associate { (key, value) ->
+                            val decoded = value(value)
+                            key to
+                                if (key in BLOB_COLUMNS) {
+                                    require(decoded is String) { "Backup binary field is invalid." }
+                                    try {
+                                        Base64.getDecoder().decode(decoded)
+                                    } catch (_: IllegalArgumentException) {
+                                        throw IllegalArgumentException("Backup binary field is invalid.")
+                                    }
+                                } else {
+                                    decoded
                                 }
-                            } else {
-                                decoded
-                            }
+                        }
+                    }
+            }
+        if (root.path("version").intValue() == 1) {
+            return decodedTables.mapValues { (table, records) ->
+                records.map { record ->
+                    when (table) {
+                        "package_revision" -> record + ("active" to 1L)
+                        "attempt" -> record + ("context_snapshot" to "Context unavailable in schema 1")
+                        else -> record
                     }
                 }
+            }
         }
+        return decodedTables
     }
 
     private fun value(node: JsonNode): Any? =
         when {
-            node.isNull -> null
-            node.isIntegralNumber -> node.longValue()
-            node.isTextual -> node.textValue()
-            node.isBoolean -> node.booleanValue()
-            else -> throw IllegalArgumentException("Backup field type is unsupported.")
+            node.isNull -> {
+                null
+            }
+
+            node.isIntegralNumber -> {
+                require(node.canConvertToLong()) { "Backup integer is out of range." }
+                node.longValue()
+            }
+
+            node.isTextual -> {
+                node.textValue()
+            }
+
+            node.isBoolean -> {
+                node.booleanValue()
+            }
+
+            else -> {
+                throw IllegalArgumentException("Backup field type is unsupported.")
+            }
         }
 
     private val BLOB_COLUMNS = setOf("checkpoint", "result_payload", "assistance", "payload", "supporting_attempts")

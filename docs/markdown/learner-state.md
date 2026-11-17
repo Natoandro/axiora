@@ -10,10 +10,10 @@ Learner data never belongs inside an installed content package. Removing a cours
 
 | Record | Important fields | Lifetime |
 | --- | --- | --- |
-| `package_revision` | Package ID, version, manifest hash, storage location, import time | Immutable installed identity |
+| `package_revision` | Package ID, version, manifest hash, storage location, import time, active-library flag | Immutable installed identity |
 | `session` | ID, exact package/unit revision, active activity, first-result branch, state, checkpoint | Mutable checkpoint |
 | `draft` | Session, activity, text, revision counter, modified time | Mutable, retained until explicit removal |
-| `attempt` | ID, command ID, activity, sequence, response, outcome, method, assistance snapshot | Immutable submission |
+| `attempt` | ID, command ID, activity, sequence, response, outcome, method, assistance snapshot, readable context snapshot | Immutable submission |
 | `learning_event` | Monotonic database sequence, event ID, type, payload version, occurrence time | Append-only explanation history |
 | `observation` | Attempt, objective, skill, family, evidence-policy version | Immutable evidence input |
 | `objective_summary` | Objective and unit revision, descriptive state, supporting attempts, policy version | Rebuildable projection |
@@ -90,6 +90,18 @@ Version 0.1 should export a user-selected archive containing a versioned JSON le
 Use an application-level serialization, not a raw live SQLite copy. Take a consistent snapshot in a transaction. Backup encryption is deferred; clearly label the file as readable personal data and let the user choose its destination. Do not upload it automatically.
 
 For the first release, restore is permitted only into an empty learner profile. Validate limits, versions, referential integrity, and IDs in staging; commit atomically. Reject a nonempty-profile restore with a clear explanation rather than attempting an unspecified merge. Missing packages do not invalidate readable learner history; mark the content unavailable and offer reimport by hash. Cross-device synchronization and merge conflict resolution are deferred.
+
+## Phase 4 JVM persistence format
+
+The implemented adapter uses SQLite schema 2 and application backup format 2. These versions are independent of content schema 0.1. A backup is one UTF-8 JSON document with exactly `format`, `version`, and `tables`; it is not a live database copy or a package archive. The format identifier is `axiora-learner-backup`. Tables contain exact record columns, BLOBs use base64 strings, and numeric fields use integers. The adapter bounds input to 64 MiB, 250,000 records per table, and 2,000,000 characters per text field. Duplicate keys, trailing JSON, unknown formats/tables/columns, invalid field types, and relational constraint failures are rejected before commit.
+
+For example, a format-2 package record adds `"active": 0` when removed from the active library; an attempt adds `"context_snapshot": "Prompt: …; selected option: …; key revision: …; rubric: …"`. `StudyRepository` requires the application to supply bounded readable context from the pinned package, because the domain model contains identifiers rather than teaching prose. `attemptHistory` reads the response, method, assistance, and context without loading package files. Resume still requires the exact pinned unit through `UnitLookup`.
+
+Schema 1 migrates transactionally to schema 2 without rewriting primary records. Existing packages start active. Older attempts receive the explicit text `Context unavailable in schema 1`; migration cannot reconstruct a prompt that was never saved. Format-1 backups remain accepted with the same defaults. Format 2 is refused by the older format-1 reader. The [saved schema-1 fixture](../../storage/src/test/resources/schema-v1.sql) includes attempts, drafts, events, observations, summaries, review tasks, notes, and a durable command receipt for compatibility checks.
+
+Library removal sets the active flag and blocks new sessions, retaining archives, existing sessions, attempts, and notes. Reconciliation preserves that flag; an explicit successful reimport reactivates the revision. No automatic content garbage collection or learner-data deletion is implemented. Recovery deletes abandoned import staging files and registers validated promoted archives left by a terminated process; a failed registration keeps those bytes for retry. Run reconciliation at startup before accepting imports, using one installer at a time. Android lifecycle wiring remains Phase 5.
+
+Restore validates and inserts records in one transaction into an empty profile and returns references whose archive cannot be validated against the recorded identity and hash. It preserves the original content references, command receipts, and personal work even when all packages are missing. Package bytes are excluded; the application must reimport unavailable packages and resolve exact revisions before resuming. UI file selection, privacy notices, and saved/unsaved indicators remain Android work.
 
 ## Privacy defaults
 

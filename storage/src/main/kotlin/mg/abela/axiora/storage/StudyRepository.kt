@@ -29,6 +29,8 @@ class StudyRepository(
     private val engine: StudyEngine,
     private val sessions: VersionedStudyCodec<StudySession>,
     private val results: VersionedStudyCodec<TransitionResult>,
+    /** Supplies bounded readable prompt, option/key and rubric context from the pinned package. */
+    private val attemptContext: (StudySession, String) -> String,
     private val now: () -> Instant = Instant::now,
 ) {
     fun create(session: StudySession) {
@@ -105,6 +107,7 @@ class StudyRepository(
                             attempt.submittedAt.toString(),
                             attempt.localStudyDate.toString(),
                             attempt.zoneOffset.toString(),
+                            attemptContext(updated, attempt.activityId).also { require(it.isNotBlank() && it.length <= 2_000_000) },
                         )
                     },
                 observations =
@@ -119,7 +122,7 @@ class StudyRepository(
                     },
                 invalidatedObjectives = observations.map { it.objectiveId }.toSet(),
                 draft =
-                    (command as? StudyCommand.SaveProofDraft)?.let {
+                    (command as? StudyCommand.SaveProofDraft)?.takeIf { accepted != null }?.let {
                         DraftWrite(updated.currentActivityId, it.text, it.revision, now().toString())
                     },
             )

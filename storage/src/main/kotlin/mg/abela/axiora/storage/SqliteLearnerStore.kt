@@ -3,6 +3,7 @@ package mg.abela.axiora.storage
 import mg.abela.axiora.content.Revision
 import mg.abela.axiora.content.StableId
 import mg.abela.axiora.learning.UnitRevisionRef
+import mg.abela.axiora.validation.PackageArchiveReader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
@@ -12,6 +13,7 @@ import java.sql.ResultSet
 /** Versioned learner records. Payload bytes are application-versioned and never interpreted as SQL. */
 class SqliteLearnerStore(
     private val database: Path,
+    private val fault: (String) -> Unit = {},
 ) {
     init {
         database.toAbsolutePath().parent?.let { Files.createDirectories(it) }
@@ -69,12 +71,60 @@ class SqliteLearnerStore(
                 }
         }
 
+    /** Deactivation retains immutable bytes and all learner records. Reimport explicitly reactivates. */
+    fun setPackageActive(
+        packageId: String,
+        version: String,
+        active: Boolean,
+    ) = transaction { connection ->
+        connection.prepareStatement("UPDATE package_revision SET active = ? WHERE package_id = ? AND package_version = ?").use {
+            it.setInt(1, if (active) 1 else 0)
+            it.setString(2, packageId)
+            it.setString(3, version)
+            require(it.executeUpdate() == 1) { "Package revision is unavailable." }
+        }
+    }
+
+    fun activePackages(): List<InstalledPackage> = packageRevisions().filter { it.active }
+
+    /** Historical submissions remain readable without resolving content or decoding a checkpoint. */
+    fun attemptHistory(sessionId: String): List<HistoricalAttempt> =
+        DriverManager.getConnection(jdbcUrl()).use { connection ->
+            connection
+                .prepareStatement(
+                    "SELECT attempt_id, response, outcome, method, assistance, context_snapshot FROM attempt WHERE session_id = ? ORDER BY sequence, attempt_id",
+                ).use {
+                    it.setString(1, sessionId)
+                    it.executeQuery().use { rows ->
+                        buildList {
+                            while (rows.next()) {
+                                add(
+                                    HistoricalAttempt(
+                                        rows.getString(1),
+                                        rows.getString(2),
+                                        rows.getString(3),
+                                        rows.getString(4),
+                                        rows.getBytes(5),
+                                        rows.getString(6),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+        }
+
+    fun clearDerivedSummaries() =
+        transaction { connection ->
+            connection.createStatement().use { it.executeUpdate("DELETE FROM objective_summary") }
+        }
+
     fun packageRevisions(): List<InstalledPackage> =
         DriverManager.getConnection(jdbcUrl()).use { connection ->
             connection.createStatement().use { statement ->
                 statement
                     .executeQuery(
-                        """SELECT package_id, package_version, manifest_sha256, content_location, imported_at
+                        """SELECT package_id, package_version, manifest_sha256, content_location, imported_at, active
                        FROM package_revision ORDER BY package_id, package_version""",
                     ).use { rows ->
                         buildList {
@@ -86,6 +136,7 @@ class SqliteLearnerStore(
                                         rows.getString(3),
                                         rows.getString(4),
                                         rows.getString(5),
+                                        rows.getInt(6) != 0,
                                     ),
                                 )
                             }
@@ -154,6 +205,11 @@ class SqliteLearnerStore(
         initialResultVersion: Int? = null,
         initialResultPayload: ByteArray? = null,
     ) = transaction { connection ->
+        connection.prepareStatement("SELECT active FROM package_revision WHERE package_id = ? AND package_version = ?").use {
+            it.setString(1, session.revision.packageId.value)
+            it.setString(2, session.revision.packageVersion.toString())
+            it.executeQuery().use { rows -> require(rows.next() && rows.getInt(1) == 1) { "Package is not active for new sessions." } }
+        }
         connection
             .prepareStatement(
                 """INSERT INTO learner_session(
@@ -266,7 +322,7 @@ class SqliteLearnerStore(
         }
 
     /** Validates the entire snapshot before atomically inserting it into an empty profile. */
-    fun restoreSnapshot(bytes: ByteArray) {
+    fun restoreSnapshot(bytes: ByteArray): List<InstalledPackage> {
         require(bytes.size <= MAX_BACKUP_BYTES) { "Backup exceeds the supported size limit." }
         val rows = SnapshotJson.decode(bytes)
         transaction { connection ->
@@ -295,6 +351,13 @@ class SqliteLearnerStore(
                 }
             }
         }
+        return packageRevisions().filter { installed ->
+            !runCatching {
+                val descriptor = PackageArchiveReader().inspect(Path.of(installed.contentLocation))
+                descriptor.packageId == installed.packageId && descriptor.version == installed.packageVersion &&
+                    descriptor.manifestSha256 == installed.manifestSha256
+            }.getOrDefault(false)
+        }
     }
 
     private fun validateSnapshotRows(rows: Map<String, List<Map<String, Any?>>>) {
@@ -304,6 +367,17 @@ class SqliteLearnerStore(
             val expected = TABLE_COLUMNS.getValue(table)
             records.forEach { record ->
                 require(record.keys == expected) { "Backup has an invalid $table record shape." }
+                if (table == "package_revision") {
+                    require(record["manifest_sha256"] is String && Regex("[0-9a-f]{64}").matches(record["manifest_sha256"] as String)) {
+                        "Backup package hash is invalid."
+                    }
+                    require(
+                        record["content_location"] is String &&
+                            runCatching {
+                                Path.of(record["content_location"] as String)
+                            }.isSuccess,
+                    ) { "Backup content location is invalid." }
+                }
                 record.forEach { (column, value) ->
                     when {
                         value == null -> {
@@ -372,6 +446,7 @@ class SqliteLearnerStore(
                 "Observations must refer to attempts created by the committed command."
             }
             require(commit.observations.all { it.policyVersion > 0 }) { "Observation policy version must be positive." }
+            fault("before-checkpoint")
             val sessionUpdated =
                 connection
                     .prepareStatement(
@@ -386,6 +461,7 @@ class SqliteLearnerStore(
                         statement.setString(5, sessionId)
                         statement.executeUpdate()
                     }
+            fault("checkpoint")
             check(sessionUpdated == 1) { "Session '$sessionId' is unavailable." }
 
             connection
@@ -401,10 +477,15 @@ class SqliteLearnerStore(
                     statement.setString(5, commit.updatedAt)
                     statement.executeUpdate()
                 }
+            fault("receipt")
             commit.draft?.let { saveDraft(connection, sessionId, it) }
+            fault("draft")
             commit.attempts.forEach { insertAttempt(connection, sessionId, it) }
+            fault("attempts")
             commit.observations.forEach { insertObservation(connection, it) }
+            fault("observations")
             commit.events.forEach { insertEvent(connection, sessionId, it) }
+            fault("events")
             commit.invalidatedObjectives.forEach { objectiveId ->
                 connection
                     .prepareStatement("DELETE FROM objective_summary WHERE objective_id = ? AND unit_revision_key = ?")
@@ -414,6 +495,7 @@ class SqliteLearnerStore(
                         statement.executeUpdate()
                     }
             }
+            fault("projections")
             CommandReceipt(commandId, sessionId, commit.resultVersion, commit.resultPayload, wasReplay = false)
         }
 
@@ -450,8 +532,8 @@ class SqliteLearnerStore(
             .prepareStatement(
                 """INSERT INTO attempt(
                attempt_id, command_id, session_id, unit_revision_key, activity_id, sequence,
-               response, outcome, method, assistance, submitted_at, local_study_date, zone_offset
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               response, outcome, method, assistance, submitted_at, local_study_date, zone_offset, context_snapshot
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             ).use { statement ->
                 statement.setString(1, attempt.id)
                 statement.setString(2, attempt.commandId)
@@ -466,6 +548,7 @@ class SqliteLearnerStore(
                 statement.setString(11, attempt.submittedAt)
                 statement.setString(12, attempt.localStudyDate)
                 statement.setString(13, attempt.zoneOffset)
+                statement.setString(14, attempt.contextSnapshot)
                 statement.executeUpdate()
             }
     }
@@ -552,6 +635,7 @@ class SqliteLearnerStore(
             connection.createStatement().use { it.execute("BEGIN IMMEDIATE") }
             try {
                 val result = block(connection)
+                fault("before-commit")
                 connection.createStatement().use { it.execute("COMMIT") }
                 result
             } catch (error: Throwable) {
@@ -576,7 +660,8 @@ class SqliteLearnerStore(
         if (version == SCHEMA_VERSION) return
         connection.createStatement().use { it.execute("BEGIN IMMEDIATE") }
         try {
-            SCHEMA_V1.forEach { sql -> connection.createStatement().use { it.execute(sql) } }
+            if (version == 0) SCHEMA_V1.forEach { sql -> connection.createStatement().use { it.execute(sql) } }
+            SCHEMA_V2.forEach { sql -> connection.createStatement().use { it.execute(sql) } }
             connection.createStatement().use { it.execute("PRAGMA user_version = $SCHEMA_VERSION") }
             connection.createStatement().use { it.execute("COMMIT") }
         } catch (error: Throwable) {
@@ -588,7 +673,7 @@ class SqliteLearnerStore(
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 1
+        const val SCHEMA_VERSION = 2
         const val MAX_BACKUP_BYTES = 64 * 1024 * 1024
         const val MAX_BACKUP_ROWS = 250_000
         const val MAX_BACKUP_TEXT = 2_000_000
@@ -614,6 +699,7 @@ class SqliteLearnerStore(
                         "manifest_sha256",
                         "content_location",
                         "imported_at",
+                        "active",
                     ),
                 "learner_session" to
                     setOf(
@@ -644,6 +730,7 @@ class SqliteLearnerStore(
                         "submitted_at",
                         "local_study_date",
                         "zone_offset",
+                        "context_snapshot",
                     ),
                 "learning_event" to
                     setOf(
@@ -692,6 +779,7 @@ class SqliteLearnerStore(
             )
         val INTEGER_COLUMNS =
             mapOf(
+                "package_revision" to setOf("active"),
                 "command_result" to setOf("result_version"),
                 "draft" to setOf("revision"),
                 "attempt" to setOf("sequence"),
@@ -706,6 +794,11 @@ class SqliteLearnerStore(
                 "observation" to setOf("assessment_family"),
                 "review_task" to setOf("last_assessment_family"),
                 "note" to setOf("revision"),
+            )
+        val SCHEMA_V2 =
+            listOf(
+                "ALTER TABLE package_revision ADD COLUMN active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0, 1))",
+                "ALTER TABLE attempt ADD COLUMN context_snapshot TEXT NOT NULL DEFAULT 'Context unavailable in schema 1'",
             )
         val SCHEMA_V1 =
             listOf(
@@ -778,6 +871,7 @@ data class InstalledPackage(
     val manifestSha256: String,
     val contentLocation: String,
     val importedAt: String,
+    val active: Boolean = true,
 )
 
 data class StoredNote(
@@ -819,6 +913,7 @@ data class AttemptWrite(
     val submittedAt: String,
     val localStudyDate: String,
     val zoneOffset: String,
+    val contextSnapshot: String = "Context unavailable",
 )
 
 data class EventWrite(
@@ -873,3 +968,13 @@ class PackageRevisionConflict(
 class CommandIdConflict(
     commandId: String,
 ) : IllegalStateException("Command ID '$commandId' was already used by another session.")
+
+/** A readable historical record, independent of installed packages. */
+data class HistoricalAttempt(
+    val id: String,
+    val response: String,
+    val outcome: String,
+    val method: String,
+    val assistance: ByteArray,
+    val contextSnapshot: String,
+)

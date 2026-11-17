@@ -1,6 +1,6 @@
 # Implementation status
 
-This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–3 are complete; M1 and M2 are closed. Phase 4 implementation is underway but remains unverified; Android and the reviewed course remain later work.
+This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. M3 remains open pending Phase 5; Android and the reviewed course remain later work.
 
 ## Phase 1 — complete
 
@@ -38,10 +38,30 @@ Evidence policy produces versioned observations from exact-choice attempts, reta
 
 **Remaining:** durable receipts and atomic persistence for repeated commands (Phase 4), package installation into learner storage (Phase 4), and any Android execution remain unimplemented. Mathematical and teaching review of the example content remains outstanding.
 
-## Phase 4 — in progress
+## Phase 4 — complete at the JVM layer
 
-**Implemented and focused checks passed:** the storage module now has a binary, versioned study checkpoint codec that reloads the exact pinned unit, a replay result codec, and a `StudyRepository` that checks durable command receipts before invoking `StudyEngine`. Accepted command records, attempts, evidence observations, draft writes, event rows, summary invalidations, and the new checkpoint are committed in one transaction. The store has checkpoint and note reads/writes, package identity registration, and versioned JSON backup snapshots that restore only into an empty profile. `PackageInstaller` validates archives before staging and atomic promotion, and `reconcile` registers promoted archives left behind by a crash while reporting missing files. Tests cover checkpoint/result round trips, command replay, stale-draft rollback, backup restore/refusal, package idempotence, conflicting identity, and reconciliation.
+**Environment:** OpenJDK 21.0.13, Gradle 8.14, Kotlin Gradle plugin 2.2.20, SQLite JDBC 3.54.1.0, JVM bytecode target 17; Linux temporary filesystems and real SQLite databases. No new dependency was introduced.
 
-**Verified:** `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon :storage:ktlintFormat :storage:test :storage:ktlintCheck` passed on 17 November 2026. This compiled the storage module and passed its six real-SQLite tests and formatting checks.
+**Implemented:** versioned checkpoints and command-result codecs, `StudyRepository`, SQLite schema 2, immutable package storage, staged installation and startup reconciliation, active-library removal, standalone readable attempt history, notes, consistent application-level JSON backups, and atomic empty-profile restore. Command transactions write receipts, checkpoints, drafts, attempts, assistance, ordered events, observations, and summary invalidations together. Rejected stale draft commands no longer attempt a draft-table write. New sessions require an active package; existing sessions remain pinned across updates and removal. The application supplies prompt/key/rubric context for new attempt snapshots.
 
-**Still open:** additional acceptance coverage is needed for failures at every transaction and file-promotion boundary, backup retention of all record types and missing packages, and the full D01–D03 import/update/removal paths. No migration fixture exists because schema version 1 is the first schema. Android driver and lifecycle compatibility remain Phase 5 work. Phase 4 remains open until its full exit criteria pass.
+**Recovery and compatibility:** Injected failures cover before/after checkpoint, receipt, draft, attempt, observation, event, projection, and commit boundaries; failure preserves the prior export and permits retry. Installer failures cover staging, copy, validation, promotion, and registration. Valid promoted archives survive database failure and are registered on reconciliation; abandoned staging files are removed. A frozen populated schema-1 SQL fixture migrates without losing learner records. Format-1 backups upgrade with explicit unavailable-context text for older attempts. New exports use format 2. Summary invalidation/rebuild leaves primary records intact. No automatic content garbage collection or learner-data deletion is introduced.
+
+| Gate | Verified evidence |
+| --- | --- |
+| C01–C02 | Same import is idempotent; changed identity bytes are refused with the installed revision preserved |
+| L02 | Production repository replays the original submission after reopen and restore with one historical attempt |
+| D01 at storage layer | A separate JVM halts during a draft transaction; reopen restores the prior committed snapshot. Repository integration also verifies failed-save rollback, later revision, and stale-autosave refusal |
+| D02 | New package/unit versions install beside the old archive; old session stays pinned and new repository work uses the new revision |
+| D03 | Deactivation blocks new sessions while retaining archives, draft, notes, readable prompt/response/assistance history, and existing-session resume; reconciliation does not reactivate removal |
+| B01 | Every table round trips, including drafts, notes, attempts, assistance, event sequences, observations, summaries, reviews, command identities, active flags, and content references; missing packages are reported |
+| B02 | Corrupt JSON, duplicate keys, trailing JSON, wrong version type, relational corruption, and nonempty-profile restores refuse without changing prior work |
+| Crash recovery | Separate JVMs halt without cleanup during draft writes and after archive promotion; reopening/reconciliation recovers safely |
+| Migration | Populated schema-1 fixture upgrades; reopening is idempotent; future database schemas are refused; format-1 backups retain work |
+
+**Verified commands (17 November 2026):**
+
+- `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon test ktlintCheck` — passed for all JVM modules: 50 tests in the recorded reports, including 18 storage tests; unchanged module tasks were up to date.
+- `UV_CACHE_DIR=/tmp/axiora-uv-cache uv run --locked python scripts/build_docs.py --check` — passed.
+- `UV_CACHE_DIR=/tmp/axiora-uv-cache uv run --locked python scripts/check_docs.py` — passed.
+
+**Remaining outside Phase 4:** Android driver compatibility, file-selection and privacy UI, visible save status, actual Android force-stop/lifecycle behavior, device accessibility, and renderer integration remain Phase 5. JVM process termination does not establish Android acceptance or power-loss/filesystem durability on every device. Missing content prevents session resume until exact content is available; historical attempt snapshots and notes remain readable. Older schema-1 attempts cannot recover unsaved prompt context. Mathematical and teaching review remain outstanding. No Android application, AI integration, or reviewed course is claimed.
