@@ -1,6 +1,6 @@
 # Implementation status
 
-This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–3 are complete; M1 and M2 are closed. Durable learner storage, package installation, Android, and the reviewed course remain later work.
+This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–3 are complete; M1 and M2 are closed. Phase 4 implementation is underway but remains unverified; Android and the reviewed course remain later work.
 
 ## Phase 1 — complete
 
@@ -40,8 +40,8 @@ Evidence policy produces versioned observations from exact-choice attempts, reta
 
 ## Phase 4 — in progress
 
-**Implemented so far:** the new `storage` JVM module defines SQLite schema version 1 for immutable package revisions, pinned sessions, command results, drafts, attempts, ordered learning events, observations, objective summaries, review tasks, and notes. The adapter registers package revisions idempotently by identity and manifest hash, rejecting a conflicting hash. Its command transaction reads an existing receipt before calling the transition callback, then commits the updated checkpoint, optional draft, attempts, events, summary invalidations, and versioned result payload together. Draft writes only replace a stored draft with a higher revision. The Xerial SQLite JDBC version and scope are recorded in [ADR-012](docs/markdown/decisions.md#adr-012--relational-learner-records-and-durable-command-receipts).
+**Implemented and focused checks passed:** the storage module now has a binary, versioned study checkpoint codec that reloads the exact pinned unit, a replay result codec, and a `StudyRepository` that checks durable command receipts before invoking `StudyEngine`. Accepted command records, attempts, evidence observations, draft writes, event rows, summary invalidations, and the new checkpoint are committed in one transaction. The store has checkpoint and note reads/writes, package identity registration, and versioned JSON backup snapshots that restore only into an empty profile. `PackageInstaller` validates archives before staging and atomic promotion, and `reconcile` registers promoted archives left behind by a crash while reporting missing files. Tests cover checkpoint/result round trips, command replay, stale-draft rollback, backup restore/refusal, package idempotence, conflicting identity, and reconciliation.
 
-**Not yet implemented:** a codec and repository facade connecting `StudyEngine` state to durable snapshots; full observation and review persistence; staged package installation/reconciliation; backup/restore; and migration fixtures. The JVM driver does not verify Android compatibility.
+**Verified:** `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --no-daemon :storage:ktlintFormat :storage:test :storage:ktlintCheck` passed on 17 November 2026. This compiled the storage module and passed its six real-SQLite tests and formatting checks.
 
-**Verification:** `:storage:compileKotlin :storage:ktlintCheck` could not start: Gradle failed before project configuration with “Could not determine a usable wildcard IP for this machine.” No database tests were added or run. The schema and transaction behavior are therefore not yet verified against a real database, and Phase 4 remains open.
+**Still open:** additional acceptance coverage is needed for failures at every transaction and file-promotion boundary, backup retention of all record types and missing packages, and the full D01–D03 import/update/removal paths. No migration fixture exists because schema version 1 is the first schema. Android driver and lifecycle compatibility remain Phase 5 work. Phase 4 remains open until its full exit criteria pass.

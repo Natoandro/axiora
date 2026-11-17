@@ -1,10 +1,13 @@
 package mg.abela.axiora.storage
 
+import mg.abela.axiora.content.Revision
+import mg.abela.axiora.content.StableId
 import mg.abela.axiora.learning.UnitRevisionRef
 import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.ResultSet
 
 /** Versioned learner records. Payload bytes are application-versioned and never interpreted as SQL. */
 class SqliteLearnerStore(
@@ -24,11 +27,15 @@ class SqliteLearnerStore(
     /** Registers exact package bytes. Reimporting the same identity and hash is idempotent. */
     fun registerPackage(revision: InstalledPackage) =
         transaction { connection ->
-            require(Regex("[0-9a-f]{64}").matches(revision.manifestSha256)) { "Manifest hash must be lowercase SHA-256 hex." }
+            require(Regex("[0-9a-f]{64}").matches(revision.manifestSha256)) {
+                "Manifest hash must be lowercase SHA-256 hex."
+            }
             connection
                 .prepareStatement(
-                    """INSERT INTO package_revision(package_id, package_version, manifest_sha256, content_location, imported_at)
-               VALUES (?, ?, ?, ?, ?) ON CONFLICT(package_id, package_version) DO NOTHING""",
+                    """INSERT INTO package_revision(
+                       package_id, package_version, manifest_sha256, content_location, imported_at
+                       ) VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(package_id, package_version) DO NOTHING""",
                 ).use { statement ->
                     statement.setString(1, revision.packageId)
                     statement.setString(2, revision.packageVersion)
@@ -46,30 +53,295 @@ class SqliteLearnerStore(
                         statement.setString(2, revision.packageVersion)
                         statement.executeQuery().use { rows -> if (rows.next()) rows.getString(1) else null }
                     }
-            if (savedHash != revision.manifestSha256) throw PackageRevisionConflict(revision.packageId, revision.packageVersion)
-        }
-
-    fun createSession(session: StoredSession) =
-        transaction { connection ->
+            if (savedHash != revision.manifestSha256) {
+                throw PackageRevisionConflict(revision.packageId, revision.packageVersion)
+            }
             connection
                 .prepareStatement(
-                    """INSERT INTO learner_session(
-                session_id, package_id, package_version, unit_id, unit_version,
-                status, current_activity_id, checkpoint, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    """UPDATE package_revision SET content_location = ?
+                   WHERE package_id = ? AND package_version = ? AND manifest_sha256 = ?""",
                 ).use { statement ->
-                    statement.setString(1, session.sessionId)
-                    statement.setString(2, session.revision.packageId.value)
-                    statement.setString(3, session.revision.packageVersion.toString())
-                    statement.setString(4, session.revision.unitId.value)
-                    statement.setString(5, session.revision.unitVersion.toString())
-                    statement.setString(6, session.status)
-                    statement.setString(7, session.currentActivityId)
-                    statement.setBytes(8, session.checkpoint)
-                    statement.setString(9, session.updatedAt)
+                    statement.setString(1, revision.contentLocation)
+                    statement.setString(2, revision.packageId)
+                    statement.setString(3, revision.packageVersion)
+                    statement.setString(4, revision.manifestSha256)
                     statement.executeUpdate()
                 }
         }
+
+    fun packageRevisions(): List<InstalledPackage> =
+        DriverManager.getConnection(jdbcUrl()).use { connection ->
+            connection.createStatement().use { statement ->
+                statement
+                    .executeQuery(
+                        """SELECT package_id, package_version, manifest_sha256, content_location, imported_at
+                       FROM package_revision ORDER BY package_id, package_version""",
+                    ).use { rows ->
+                        buildList {
+                            while (rows.next()) {
+                                add(
+                                    InstalledPackage(
+                                        rows.getString(1),
+                                        rows.getString(2),
+                                        rows.getString(3),
+                                        rows.getString(4),
+                                        rows.getString(5),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+            }
+        }
+
+    fun saveNote(note: StoredNote) =
+        transaction { connection ->
+            require(note.noteId.isNotBlank() && note.contentId.isNotBlank()) { "Note identity is required." }
+            connection
+                .prepareStatement(
+                    """INSERT INTO note(note_id, content_id, revision, anchor, text, created_at, modified_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(note_id) DO UPDATE SET content_id = excluded.content_id,
+                 revision = excluded.revision, anchor = excluded.anchor, text = excluded.text,
+                 modified_at = excluded.modified_at""",
+                ).use { statement ->
+                    statement.setString(1, note.noteId)
+                    statement.setString(2, note.contentId)
+                    statement.setString(3, note.revision)
+                    statement.setString(4, note.anchor)
+                    statement.setString(5, note.text)
+                    statement.setString(6, note.createdAt)
+                    statement.setString(7, note.modifiedAt)
+                    statement.executeUpdate()
+                }
+        }
+
+    fun notes(contentId: String? = null): List<StoredNote> =
+        DriverManager.getConnection(jdbcUrl()).use { connection ->
+            val sql =
+                if (contentId == null) {
+                    """SELECT note_id, content_id, revision, anchor, text, created_at, modified_at
+                       FROM note ORDER BY created_at, note_id"""
+                } else {
+                    """SELECT note_id, content_id, revision, anchor, text, created_at, modified_at
+                       FROM note WHERE content_id = ? ORDER BY created_at, note_id"""
+                }
+            connection.prepareStatement(sql).use { statement ->
+                if (contentId != null) statement.setString(1, contentId)
+                statement.executeQuery().use { rows ->
+                    buildList {
+                        while (rows.next()) {
+                            add(
+                                StoredNote(
+                                    rows.getString(1),
+                                    rows.getString(2),
+                                    rows.getString(3),
+                                    rows.getString(4),
+                                    rows.getString(5),
+                                    rows.getString(6),
+                                    rows.getString(7),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    fun createSession(
+        session: StoredSession,
+        initialEvent: EventWrite? = null,
+        initialResultVersion: Int? = null,
+        initialResultPayload: ByteArray? = null,
+    ) = transaction { connection ->
+        connection
+            .prepareStatement(
+                """INSERT INTO learner_session(
+                session_id, package_id, package_version, unit_id, unit_version,
+                status, current_activity_id, checkpoint, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ).use { statement ->
+                statement.setString(1, session.sessionId)
+                statement.setString(2, session.revision.packageId.value)
+                statement.setString(3, session.revision.packageVersion.toString())
+                statement.setString(4, session.revision.unitId.value)
+                statement.setString(5, session.revision.unitVersion.toString())
+                statement.setString(6, session.status)
+                statement.setString(7, session.currentActivityId)
+                statement.setBytes(8, session.checkpoint)
+                statement.setString(9, session.updatedAt)
+                statement.executeUpdate()
+            }
+        require(
+            (initialEvent == null) == (initialResultVersion == null) &&
+                (initialEvent == null) == (initialResultPayload == null),
+        ) {
+            "Initial event and command receipt must be supplied together."
+        }
+        initialEvent?.let { event ->
+            require(event.commandId == "start:${session.sessionId}") { "Initial event command ID is invalid." }
+            connection
+                .prepareStatement(
+                    """INSERT INTO command_result(
+                           command_id, session_id, result_version, result_payload, committed_at
+                           ) VALUES (?, ?, ?, ?, ?)""",
+                ).use { statement ->
+                    statement.setString(1, event.commandId)
+                    statement.setString(2, session.sessionId)
+                    statement.setInt(3, requireNotNull(initialResultVersion))
+                    statement.setBytes(4, requireNotNull(initialResultPayload))
+                    statement.setString(5, event.occurrence)
+                    statement.executeUpdate()
+                }
+            insertEvent(connection, session.sessionId, event)
+        }
+    }
+
+    fun loadSession(sessionId: String): StoredSession? =
+        DriverManager.getConnection(jdbcUrl()).use { connection ->
+            connection.createStatement().use { it.execute("PRAGMA foreign_keys = ON") }
+            connection
+                .prepareStatement(
+                    """SELECT package_id, package_version, unit_id, unit_version, status,
+                   current_activity_id, checkpoint, updated_at FROM learner_session WHERE session_id = ?""",
+                ).use { statement ->
+                    statement.setString(1, sessionId)
+                    statement.executeQuery().use { rows ->
+                        if (!rows.next()) return@use null
+                        StoredSession(
+                            sessionId,
+                            UnitRevisionRef(
+                                StableId(rows.getString(1)),
+                                requireNotNull(Revision.parse(rows.getString(2))) {
+                                    "Stored package version is invalid."
+                                },
+                                StableId(rows.getString(3)),
+                                requireNotNull(Revision.parse(rows.getString(4))) {
+                                    "Stored unit version is invalid."
+                                },
+                            ),
+                            rows.getString(5),
+                            rows.getString(6),
+                            rows.getBytes(7),
+                            rows.getString(8),
+                        )
+                    }
+                }
+        }
+
+    fun isEmpty(): Boolean =
+        transaction { connection ->
+            SNAPSHOT_TABLES.all { table ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("SELECT EXISTS(SELECT 1 FROM $table LIMIT 1)").use { rows ->
+                        rows.next() && rows.getInt(1) == 0
+                    }
+                }
+            }
+        }
+
+    /** Returns a consistent application-level JSON snapshot; package files and secrets are excluded. */
+    fun exportSnapshot(): ByteArray =
+        transaction { connection ->
+            val tables =
+                SNAPSHOT_TABLES.associateWith { table ->
+                    connection.createStatement().use { statement ->
+                        statement.executeQuery("SELECT * FROM $table").use { rows ->
+                            val metadata = rows.metaData
+                            buildList {
+                                while (rows.next()) {
+                                    add(
+                                        (1..metadata.columnCount).associate { index ->
+                                            metadata.getColumnName(index) to sqlValue(rows, index)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            SnapshotJson.encode(tables).also {
+                require(it.size <= MAX_BACKUP_BYTES) { "Backup exceeds the supported size limit." }
+            }
+        }
+
+    /** Validates the entire snapshot before atomically inserting it into an empty profile. */
+    fun restoreSnapshot(bytes: ByteArray) {
+        require(bytes.size <= MAX_BACKUP_BYTES) { "Backup exceeds the supported size limit." }
+        val rows = SnapshotJson.decode(bytes)
+        transaction { connection ->
+            val nonempty =
+                SNAPSHOT_TABLES.any { table ->
+                    connection.createStatement().use { statement ->
+                        statement.executeQuery("SELECT EXISTS(SELECT 1 FROM $table LIMIT 1)").use { result ->
+                            result.next() && result.getInt(1) != 0
+                        }
+                    }
+                }
+            require(!nonempty) { "Restore requires an empty learner profile." }
+            validateSnapshotRows(rows)
+            connection.createStatement().use { it.execute("PRAGMA defer_foreign_keys = ON") }
+            // Parents precede children. Derived projections are imported as data and can be rebuilt later.
+            SNAPSHOT_TABLES.forEach { table ->
+                rows.getValue(table).forEach { row ->
+                    val columns = row.keys.sorted()
+                    val placeholders = columns.joinToString(",") { "?" }
+                    connection
+                        .prepareStatement("INSERT INTO $table (${columns.joinToString(",")}) VALUES ($placeholders)")
+                        .use { statement ->
+                            columns.forEachIndexed { index, column -> statement.setObject(index + 1, row[column]) }
+                            statement.executeUpdate()
+                        }
+                }
+            }
+        }
+    }
+
+    private fun validateSnapshotRows(rows: Map<String, List<Map<String, Any?>>>) {
+        require(rows.keys == SNAPSHOT_TABLES.toSet()) { "Backup table set is unsupported." }
+        rows.forEach { (table, records) ->
+            require(records.size <= MAX_BACKUP_ROWS) { "Backup contains too many $table records." }
+            val expected = TABLE_COLUMNS.getValue(table)
+            records.forEach { record ->
+                require(record.keys == expected) { "Backup has an invalid $table record shape." }
+                record.forEach { (column, value) ->
+                    when {
+                        value == null -> {
+                            require(column in NULLABLE_COLUMNS[table].orEmpty()) {
+                                "Backup has a missing required $table.$column value."
+                            }
+                        }
+
+                        column in BLOB_COLUMNS[table].orEmpty() -> {
+                            require(value is ByteArray && value.size <= MAX_BACKUP_BYTES) {
+                                "Backup binary field $table.$column is invalid."
+                            }
+                        }
+
+                        column in INTEGER_COLUMNS[table].orEmpty() -> {
+                            require(value is Number) {
+                                "Backup numeric field $table.$column is invalid."
+                            }
+                        }
+
+                        else -> {
+                            require(value is String && value.length <= MAX_BACKUP_TEXT) {
+                                "Backup text field $table.$column is invalid."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun sqlValue(
+        rows: ResultSet,
+        index: Int,
+    ): Any? {
+        val value = rows.getObject(index) ?: return null
+        return if (value is ByteArray) value.copyOf() else value
+    }
 
     /**
      * Checks the durable receipt before running the reducer. The reducer and every resulting record
@@ -91,8 +363,15 @@ class SqliteLearnerStore(
             require(commit.commandId == commandId) { "Transition command ID must match receipt key." }
             require(commit.sessionId == sessionId) { "Transition session ID must match receipt owner." }
             require(commit.resultVersion > 0) { "Result payload version must be positive." }
-            require(commit.attempts.all { it.commandId == commandId }) { "Attempts must belong to the committed command." }
+            require(commit.attempts.all { it.commandId == commandId }) {
+                "Attempts must belong to the committed command."
+            }
             require(commit.events.all { it.commandId == commandId }) { "Events must belong to the committed command." }
+            val attemptIds = commit.attempts.map { it.id }.toSet()
+            require(commit.observations.all { it.attemptId in attemptIds }) {
+                "Observations must refer to attempts created by the committed command."
+            }
+            require(commit.observations.all { it.policyVersion > 0 }) { "Observation policy version must be positive." }
             val sessionUpdated =
                 connection
                     .prepareStatement(
@@ -111,7 +390,9 @@ class SqliteLearnerStore(
 
             connection
                 .prepareStatement(
-                    "INSERT INTO command_result(command_id, session_id, result_version, result_payload, committed_at) VALUES (?, ?, ?, ?, ?)",
+                    """INSERT INTO command_result(
+                       command_id, session_id, result_version, result_payload, committed_at
+                       ) VALUES (?, ?, ?, ?, ?)""",
                 ).use { statement ->
                     statement.setString(1, commandId)
                     statement.setString(2, sessionId)
@@ -122,6 +403,7 @@ class SqliteLearnerStore(
                 }
             commit.draft?.let { saveDraft(connection, sessionId, it) }
             commit.attempts.forEach { insertAttempt(connection, sessionId, it) }
+            commit.observations.forEach { insertObservation(connection, it) }
             commit.events.forEach { insertEvent(connection, sessionId, it) }
             commit.invalidatedObjectives.forEach { objectiveId ->
                 connection
@@ -216,6 +498,25 @@ class SqliteLearnerStore(
             }
     }
 
+    private fun insertObservation(
+        connection: Connection,
+        observation: ObservationWrite,
+    ) {
+        connection
+            .prepareStatement(
+                """INSERT INTO observation(
+               attempt_id, objective_id, skill, assessment_family, policy_version
+               ) VALUES (?, ?, ?, ?, ?)""",
+            ).use { statement ->
+                statement.setString(1, observation.attemptId)
+                statement.setString(2, observation.objectiveId)
+                statement.setString(3, observation.skill)
+                statement.setString(4, observation.assessmentFamily)
+                statement.setInt(5, observation.policyVersion)
+                statement.executeUpdate()
+            }
+    }
+
     private fun findReceipt(
         connection: Connection,
         commandId: String,
@@ -269,7 +570,9 @@ class SqliteLearnerStore(
                     rows.getInt(1)
                 }
             }
-        require(version <= SCHEMA_VERSION) { "Database schema $version is newer than supported schema $SCHEMA_VERSION." }
+        require(version <= SCHEMA_VERSION) {
+            "Database schema $version is newer than supported schema $SCHEMA_VERSION."
+        }
         if (version == SCHEMA_VERSION) return
         connection.createStatement().use { it.execute("BEGIN IMMEDIATE") }
         try {
@@ -286,6 +589,124 @@ class SqliteLearnerStore(
 
     private companion object {
         const val SCHEMA_VERSION = 1
+        const val MAX_BACKUP_BYTES = 64 * 1024 * 1024
+        const val MAX_BACKUP_ROWS = 250_000
+        const val MAX_BACKUP_TEXT = 2_000_000
+        val SNAPSHOT_TABLES =
+            listOf(
+                "package_revision",
+                "learner_session",
+                "command_result",
+                "draft",
+                "attempt",
+                "learning_event",
+                "observation",
+                "objective_summary",
+                "review_task",
+                "note",
+            )
+        val TABLE_COLUMNS =
+            mapOf(
+                "package_revision" to
+                    setOf(
+                        "package_id",
+                        "package_version",
+                        "manifest_sha256",
+                        "content_location",
+                        "imported_at",
+                    ),
+                "learner_session" to
+                    setOf(
+                        "session_id",
+                        "package_id",
+                        "package_version",
+                        "unit_id",
+                        "unit_version",
+                        "status",
+                        "current_activity_id",
+                        "checkpoint",
+                        "updated_at",
+                    ),
+                "command_result" to setOf("command_id", "session_id", "result_version", "result_payload", "committed_at"),
+                "draft" to setOf("session_id", "activity_id", "text", "revision", "modified_at"),
+                "attempt" to
+                    setOf(
+                        "attempt_id",
+                        "command_id",
+                        "session_id",
+                        "unit_revision_key",
+                        "activity_id",
+                        "sequence",
+                        "response",
+                        "outcome",
+                        "method",
+                        "assistance",
+                        "submitted_at",
+                        "local_study_date",
+                        "zone_offset",
+                    ),
+                "learning_event" to
+                    setOf(
+                        "sequence",
+                        "event_id",
+                        "command_id",
+                        "session_id",
+                        "package_id",
+                        "package_version",
+                        "unit_id",
+                        "unit_version",
+                        "event_type",
+                        "payload_version",
+                        "occurrence",
+                        "activity_id",
+                        "payload",
+                    ),
+                "observation" to setOf("attempt_id", "objective_id", "skill", "assessment_family", "policy_version"),
+                "objective_summary" to
+                    setOf(
+                        "objective_id",
+                        "unit_revision_key",
+                        "state",
+                        "supporting_attempts",
+                        "policy_version",
+                    ),
+                "review_task" to
+                    setOf(
+                        "objective_id",
+                        "unit_revision_key",
+                        "policy_version",
+                        "stage",
+                        "due_date",
+                        "last_assessment_family",
+                        "status",
+                    ),
+                "note" to setOf("note_id", "content_id", "revision", "anchor", "text", "created_at", "modified_at"),
+            )
+        val BLOB_COLUMNS =
+            mapOf(
+                "learner_session" to setOf("checkpoint"),
+                "command_result" to setOf("result_payload"),
+                "attempt" to setOf("assistance"),
+                "learning_event" to setOf("payload"),
+                "objective_summary" to setOf("supporting_attempts"),
+            )
+        val INTEGER_COLUMNS =
+            mapOf(
+                "command_result" to setOf("result_version"),
+                "draft" to setOf("revision"),
+                "attempt" to setOf("sequence"),
+                "learning_event" to setOf("sequence", "payload_version"),
+                "observation" to setOf("policy_version"),
+                "objective_summary" to setOf("policy_version"),
+                "review_task" to setOf("policy_version", "stage"),
+            )
+        val NULLABLE_COLUMNS =
+            mapOf(
+                "learning_event" to setOf("activity_id"),
+                "observation" to setOf("assessment_family"),
+                "review_task" to setOf("last_assessment_family"),
+                "note" to setOf("revision"),
+            )
         val SCHEMA_V1 =
             listOf(
                 """CREATE TABLE package_revision (
@@ -359,6 +780,16 @@ data class InstalledPackage(
     val importedAt: String,
 )
 
+data class StoredNote(
+    val noteId: String,
+    val contentId: String,
+    val revision: String?,
+    val anchor: String,
+    val text: String,
+    val createdAt: String,
+    val modifiedAt: String,
+)
+
 data class StoredSession(
     val sessionId: String,
     val revision: UnitRevisionRef,
@@ -401,6 +832,14 @@ data class EventWrite(
     val payload: ByteArray,
 )
 
+data class ObservationWrite(
+    val attemptId: String,
+    val objectiveId: String,
+    val skill: String,
+    val assessmentFamily: String?,
+    val policyVersion: Int,
+)
+
 data class CommandCommit(
     val sessionId: String,
     val commandId: String,
@@ -413,6 +852,7 @@ data class CommandCommit(
     val unitRevisionKey: String,
     val events: List<EventWrite> = emptyList(),
     val attempts: List<AttemptWrite> = emptyList(),
+    val observations: List<ObservationWrite> = emptyList(),
     val draft: DraftWrite? = null,
     val invalidatedObjectives: Set<String> = emptySet(),
 )
