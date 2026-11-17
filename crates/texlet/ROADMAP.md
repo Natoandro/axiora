@@ -9,9 +9,9 @@ The tiers prioritize notation likely to recur across school mathematics, univers
 | Family | Implemented |
 | --- | --- |
 | Basic atoms | ASCII letters and digits, `+ - = < > ( ) [ ] / . ,`. ASCII whitespace is ignored and minus uses the mathematical minus glyph. |
-| Sets | `\in` and `\mathbb{A}` through `\mathbb{Z}`. Blackboard bold takes one braced uppercase ASCII letter. |
+| Sets | `\in` and `\mathbb{A}` through `\mathbb{Z}`. Blackboard bold takes one braced uppercase ASCII letter and allows ASCII whitespace around it. |
 | Layout | One row, horizontal font advances, spacing around relations, ink bounds, baseline metrics. Variables currently use the font's upright letter glyphs. |
-| Output | SVG adapter emits paths from the layout font. The drawing contract includes rectangles for future rules. |
+| Output | The SVG and Android Canvas adapters draw outlines from the layout font. The drawing contract includes rectangles for future rules. |
 
 ## Tier 1 — Everyday formulas
 

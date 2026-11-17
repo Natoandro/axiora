@@ -199,7 +199,7 @@ impl Atoms<'_> {
             self.remaining.len()
                 - self
                     .remaining
-                    .trim_start_matches(|c: char| c.is_ascii_whitespace())
+                    .trim_start_matches(|c| matches!(c, ' ' | '\t'..='\r'))
                     .len(),
         );
     }
@@ -231,6 +231,12 @@ impl Iterator for Atoms<'_> {
             .bytes()
             .take_while(u8::is_ascii_alphabetic)
             .count();
+        if word_len == 0 {
+            let symbol_len = self.remaining[1..].chars().next().map_or(0, char::len_utf8);
+            return Some(Err(LayoutError::Unsupported {
+                span: self.take(1 + symbol_len),
+            }));
+        }
         let command = &self.remaining[1..1 + word_len];
         let span = self.take(1 + word_len);
         match command {
@@ -244,17 +250,23 @@ impl Iterator for Atoms<'_> {
 impl Atoms<'_> {
     fn blackboard(&mut self, mut span: Range<usize>) -> Result<(char, Range<usize>), LayoutError> {
         self.skip_space();
-        let Some(argument) = self
-            .remaining
-            .strip_prefix('{')
-            .and_then(|rest| rest.chars().next())
-        else {
-            return Err(LayoutError::ExpectedBlackboardArgument { span });
-        };
-        if !argument.is_ascii_uppercase() || !self.remaining[2..].starts_with('}') {
+        if !self.remaining.starts_with('{') {
             return Err(LayoutError::ExpectedBlackboardArgument { span });
         }
-        span.end = self.take(3).end;
+        self.take(1);
+        self.skip_space();
+        let Some(argument) = self.remaining.chars().next() else {
+            return Err(LayoutError::ExpectedBlackboardArgument { span });
+        };
+        if !argument.is_ascii_uppercase() {
+            return Err(LayoutError::ExpectedBlackboardArgument { span });
+        }
+        self.take(1);
+        self.skip_space();
+        if !self.remaining.starts_with('}') {
+            return Err(LayoutError::ExpectedBlackboardArgument { span });
+        }
+        span.end = self.take(1).end;
         let symbol = match argument {
             'C' => 'ℂ',
             'H' => 'ℍ',
@@ -293,11 +305,36 @@ mod tests {
     }
 
     #[test]
+    fn parses_all_tier_zero_literals_and_ignores_ascii_whitespace() {
+        let literals = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=<>()[]/.,";
+        let source = format!(" \t\n\r\x0b\x0c{literals}");
+        let characters: String = atoms(&source).map(|atom| atom.unwrap().0).collect();
+        assert_eq!(characters, literals.replace('-', "−"));
+    }
+
+    #[test]
+    fn parses_the_full_blackboard_alphabet_with_whitespace() {
+        let source: String = ('A'..='Z')
+            .map(|letter| format!("\\mathbb {{ {letter} }}"))
+            .collect();
+        let characters: String = atoms(&source).map(|atom| atom.unwrap().0).collect();
+        assert_eq!(characters, "𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ");
+        assert_eq!(atoms(r"\mathbb { Z }").next(), Some(Ok(('ℤ', 0..13))));
+    }
+
+    #[test]
     fn rejects_unsupported_commands_without_matching_prefixes() {
-        assert_eq!(
-            atoms(r"x \infty").nth(1),
-            Some(Err(LayoutError::Unsupported { span: 2..8 }))
-        );
+        for (source, span) in [
+            (r"x \infty", 2..8),
+            (r"x \%", 2..4),
+            (r"x \α", 2..5),
+            (r"x \", 2..3),
+        ] {
+            assert_eq!(
+                atoms(source).nth(1),
+                Some(Err(LayoutError::Unsupported { span }))
+            );
+        }
     }
 
     #[test]

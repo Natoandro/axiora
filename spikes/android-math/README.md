@@ -1,6 +1,6 @@
 # Android math and accessibility spike
 
-This one-screen prototype uses fixed examples from the [illustrative course](../../examples/prime-and-maximal/README.md) and a fraction to exercise fallback. The build is independent of the JVM Gradle modules.
+This one-screen prototype uses fixed Tier 0 examples, including formulas from the [illustrative course](../../examples/prime-and-maximal/README.md) and a fraction to exercise fallback. The samples cover membership, blackboard-bold number sets, arithmetic and comparisons, closed intervals, and a long expression. The build is independent of the JVM Gradle modules.
 
 The preview uses Texlet through JNI to lay out the fixture's flat expressions, including `\in` and `\mathbb{Z}`. The native adapter translates font glyph IDs into outlines and returns drawing coordinates. Android draws those with Canvas at the user's scaled text size. Long expressions can scroll horizontally. Each example has a plain-language reading and selectable LaTeX source. Unsupported syntax, a missing glyph, or a renderer startup failure leaves the source available. The APK bundles its font and runs offline. [Android Canvas API](https://developer.android.com/reference/android/graphics/Canvas)
 

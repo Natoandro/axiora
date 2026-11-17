@@ -26,9 +26,15 @@ public final class MathActivity extends Activity {
         setContentView(scroll);
 
         font = loadFont();
-        heading("Mathematical notation");
+        heading("Texlet · Tier 0");
         example("Ideal membership", "a \\in I", "a belongs to the ideal I.");
         example("Quotient ring", "\\mathbb{Z}/(0)", "The integers modulo the zero ideal.");
+        example("Number sets", "2 \\in \\mathbb{N}, -2 \\in \\mathbb{Z}, 1/2 \\in \\mathbb{Q}",
+            "Two is a natural number, minus two is an integer, and one half is rational.");
+        example("Arithmetic and comparison", "(3 - 1)/2 + 0.5 = 1.5, 1 < 1.5, 2 > 1.5",
+            "Three minus one, divided by two, plus one half is one and a half. "
+                + "One is less than one and a half, and two is greater.");
+        example("Interval", "0.5 \\in [0, 1]", "One half belongs to the closed interval from zero to one.");
         example(
             "Long expression",
             "a \\in I, b \\in I, c \\in I, d \\in I, e \\in I, f \\in I",
