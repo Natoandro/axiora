@@ -29,7 +29,6 @@ import mg.abela.axiora.learning.AttemptOutcome
 import mg.abela.axiora.learning.RubricMark
 import mg.abela.axiora.learning.SessionStatus
 import mg.abela.axiora.learning.StudyCommand
-import mg.abela.axiora.mathspike.MathCanvas
 import mg.abela.axiora.storage.StoredNote
 import java.time.Instant
 import java.util.concurrent.Executors
@@ -297,7 +296,7 @@ class StudyActivity : Activity() {
             attempts.forEach { attempt ->
                 heading("${attempt.method.replace('_', ' ')} · ${attempt.outcome}")
                 content(attempt.contextSnapshot)
-                label(attempt.response, selectable = true)
+                content(attempt.response)
                 val assistance = org.json.JSONObject(attempt.assistance.toString(Charsets.UTF_8))
                 label(
                     "Hints opened: ${assistance.optJSONArray("revealed_hints")?.length() ?: 0}. " +
@@ -314,7 +313,7 @@ class StudyActivity : Activity() {
             if (notes.isEmpty()) label("No notes yet.")
             notes.forEach { note ->
                 heading(note.contentId)
-                label(note.text, selectable = true)
+                content(note.text)
                 action("Edit note") { editNote(note) }
             }
             action("New note") {
@@ -407,7 +406,7 @@ class StudyActivity : Activity() {
                 RadioButton(this).apply {
                     id = View.generateViewId()
                     minHeight = dp(48)
-                    this.text = option.path("text_md").asText()
+                    setMathText(option.path("text_md").asText())
                 }
             val key = option.path("id").asText()
             ids[button.id] = key
@@ -446,7 +445,7 @@ class StudyActivity : Activity() {
             proofEditor(text, progress, true)
         } else if (progress.proofSubmitted) {
             heading("Your submitted proof")
-            label(progress.attempts.last().response, selectable = true)
+            content(progress.attempts.last().response)
             label(
                 "Self-review · unassessed\nHints opened: ${progress.assistance.revealedHints.size}. " +
                     "Solution opened: ${if (progress.assistance.solutionRevealed) "yes" else "no"}.",
@@ -555,12 +554,18 @@ class StudyActivity : Activity() {
         column.addView(symbols)
         action("Save draft") { saveDraft() }
         action("Preview draft") {
-            AlertDialog
-                .Builder(this)
-                .setTitle("Draft preview")
-                .setMessage(field.text.toString())
-                .setPositiveButton("Return to draft", null)
-                .show()
+            val source = field.text.toString()
+            val dialog =
+                AlertDialog
+                    .Builder(this)
+                    .setTitle("Draft preview")
+                    .setMessage(source)
+                    .setPositiveButton("Return to draft", null)
+                    .show()
+            dialog.findViewById<TextView>(android.R.id.message)?.apply {
+                setTextIsSelectable(true)
+                post { setMathText(source) }
+            }
         }
         if (!revision) {
             text.path("hints").firstOrNull { it.path("id").asText() !in progress.assistance.revealedHints }?.let { hint ->
@@ -725,27 +730,15 @@ class StudyActivity : Activity() {
 
     private fun content(source: String) {
         if (source.isBlank()) return
-        // Source is always selectable. Native previews are supplemental and contain no links or scripts.
-        label(source, selectable = true)
-        val match = MATH.findAll(source).distinctBy { it.value }.take(12)
-        match.forEach { formula ->
-            val expression = formula.groups[1]?.value ?: formula.groups[2]?.value ?: return@forEach
-            val display = formula.groups[1] != null
-            val preview =
-                font?.takeIf { expression.length <= 512 }?.let { data ->
-                    runCatching { MathCanvas.create(this, data, expression.trim(), display) }.getOrNull()
-                }
-            if (preview == null) {
-                label("Formula preview unavailable · $expression", selectable = true)
-            } else if (preview.formulaWidth() > minOf(resources.displayMetrics.widthPixels, dp(760)) - dp(48)) {
-                label("Formula source · $expression", selectable = true)
-            } else {
-                preview.contentDescription = "Formula preview. LaTeX source: $expression"
-                preview.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-                preview.isFocusable = true
-                column.addView(preview)
-            }
-        }
+        label("", selectable = true).setMathText(source)
+    }
+
+    private fun TextView.setMathText(source: String) {
+        val viewWidth =
+            width.takeIf { it > 0 } ?: (
+                minOf(resources.displayMetrics.widthPixels, dp(760)) - column.paddingLeft - column.paddingRight
+            )
+        text = renderMathText(source, font, textSize, viewWidth - compoundPaddingLeft - compoundPaddingRight)
     }
 
     private fun action(
@@ -837,7 +830,6 @@ class StudyActivity : Activity() {
         const val IMPORT = 11
         const val EXPORT = 12
         const val RESTORE = 13
-        val MATH = Regex("""\$\$([^$]+)\$\$|\$([^$\n]+)\$""")
         val worker = Executors.newSingleThreadExecutor()
         var sharedWorkspace: StudyWorkspace? = null
     }

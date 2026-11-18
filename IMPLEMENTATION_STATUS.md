@@ -92,7 +92,7 @@ Using the same offline setup, the test installed version 0.2.1 and reopened a ve
 
 **Automated checks:** JVM tests and Kotlin lint passed with both Android modules enabled. The focused shared checks cover review entry validation and durable submission order across command replay. The Rust workspace and Tier 1 font test passed. The handbook build and link/content checks passed.
 
-**Known limits:** Full Markdown formatting, localizable Android strings, and proof reminder controls are pending. The app displays course Markdown as readable source with supplemental native formula previews. Large record reads near Android cursor-window limits are still unverified.
+**Known limits:** Full Markdown formatting, localizable Android strings, and proof reminder controls are pending. The app renders supported dollar-delimited math in place and displays other Markdown as readable source. Unsupported or oversized formulas retain their LaTeX at the original position. Large record reads near Android cursor-window limits are still unverified.
 
 **Display checks on the API 30 emulator:** At 320 dp and 2.0 font scale, Tab focused **Continue learning** and the learner could reach the question, formula previews, remediation and proof save action by scrolling. At an 800 dp emulated width, the proof editor and save actions remained available. This checks both layout widths on the phone emulator. It provides partial A01 evidence.
 

@@ -20,86 +20,100 @@ public final class MathCanvas extends View {
     public static MathCanvas create(Context context, byte[] font, String source, boolean display) {
         float size = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP, 22, context.getResources().getDisplayMetrics());
-        float[] commands = nativeLayout(font, source.getBytes(StandardCharsets.UTF_8), size, display);
-        return commands == null ? null : new MathCanvas(context, commands);
+        Formula formula = layout(font, source, size, display);
+        return formula == null ? null : new MathCanvas(context, formula);
     }
 
-    private final List<Path> paths = new ArrayList<>();
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final float left;
-    private final float top;
-    private final int width;
-    private final int height;
+    public static Formula layout(byte[] font, String source, float size, boolean display) {
+        float[] commands = nativeLayout(font, source.getBytes(StandardCharsets.UTF_8), size, display);
+        return commands == null ? null : new Formula(commands);
+    }
 
-    private MathCanvas(Context context, float[] commands) {
+    private final Formula formula;
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    private MathCanvas(Context context, Formula formula) {
         super(context);
-        left = commands[0];
-        top = commands[1];
-        width = (int) Math.ceil(commands[2]);
-        height = (int) Math.ceil(commands[3]);
+        this.formula = formula;
         TypedValue textColor = new TypedValue();
         if (context.getTheme().resolveAttribute(android.R.attr.textColorPrimary, textColor, true)) {
             int color = textColor.resourceId == 0 ? textColor.data
                 : context.getColorStateList(textColor.resourceId).getDefaultColor();
             paint.setColor(color);
         }
-
-        Path path = null;
-        for (int i = 4; i < commands.length; ) {
-            switch ((int) commands[i++]) {
-                case 0:
-                    path = new Path();
-                    paths.add(path);
-                    break;
-                case 1:
-                    path.moveTo(commands[i++], commands[i++]);
-                    break;
-                case 2:
-                    path.lineTo(commands[i++], commands[i++]);
-                    break;
-                case 3:
-                    path.quadTo(commands[i++], commands[i++], commands[i++], commands[i++]);
-                    break;
-                case 4:
-                    path.cubicTo(commands[i++], commands[i++], commands[i++], commands[i++],
-                        commands[i++], commands[i++]);
-                    break;
-                case 5:
-                    path.close();
-                    break;
-                case 6:
-                    float x = commands[i++];
-                    float y = commands[i++];
-                    float ruleWidth = commands[i++];
-                    float ruleHeight = commands[i++];
-                    Path rule = new Path();
-                    rule.addRect(x, y, x + ruleWidth, y + ruleHeight, Path.Direction.CW);
-                    paths.add(rule);
-                    break;
-                default:
-                    throw new IllegalStateException("Unknown Texlet Canvas command");
-            }
-        }
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-    }
-
-    public int formulaWidth() {
-        return width;
     }
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
-        setMeasuredDimension(resolveSize(width, widthSpec), resolveSize(height, heightSpec));
+        setMeasuredDimension(resolveSize(formula.width, widthSpec),
+            resolveSize(formula.ascent + formula.descent, heightSpec));
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        int save = canvas.save();
-        canvas.translate(-left, -top);
-        for (Path path : paths) {
-            canvas.drawPath(path, paint);
+        formula.draw(canvas, 0, formula.ascent, paint);
+    }
+
+    public static final class Formula {
+        private final List<Path> paths = new ArrayList<>();
+        private final float left;
+        public final int width;
+        public final int ascent;
+        public final int descent;
+
+        private Formula(float[] commands) {
+            left = commands[0];
+            width = (int) Math.ceil(commands[2]);
+            ascent = (int) Math.ceil(-commands[1]);
+            descent = (int) Math.ceil(commands[3] + commands[1]);
+
+            Path path = null;
+            for (int i = 4; i < commands.length; ) {
+                switch ((int) commands[i++]) {
+                    case 0:
+                        path = new Path();
+                        paths.add(path);
+                        break;
+                    case 1:
+                        path.moveTo(commands[i++], commands[i++]);
+                        break;
+                    case 2:
+                        path.lineTo(commands[i++], commands[i++]);
+                        break;
+                    case 3:
+                        path.quadTo(commands[i++], commands[i++], commands[i++], commands[i++]);
+                        break;
+                    case 4:
+                        path.cubicTo(commands[i++], commands[i++], commands[i++], commands[i++],
+                            commands[i++], commands[i++]);
+                        break;
+                    case 5:
+                        path.close();
+                        break;
+                    case 6:
+                        float x = commands[i++];
+                        float y = commands[i++];
+                        float ruleWidth = commands[i++];
+                        float ruleHeight = commands[i++];
+                        Path rule = new Path();
+                        rule.addRect(x, y, x + ruleWidth, y + ruleHeight, Path.Direction.CW);
+                        paths.add(rule);
+                        break;
+                    default:
+                        throw new IllegalStateException("Unknown Texlet Canvas command");
+                }
+            }
         }
-        canvas.restoreToCount(save);
+
+        public void draw(Canvas canvas, float x, float baseline, Paint paint) {
+            int save = canvas.save();
+            canvas.translate(x - left, baseline);
+            for (Path path : paths) {
+                canvas.drawPath(path, paint);
+            }
+            canvas.restoreToCount(save);
+        }
     }
 }
