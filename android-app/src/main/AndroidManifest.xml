@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="mg.abela.axiora.app">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="33" />
-    <application android:allowBackup="false" android:label="Axiora"
+    <application android:allowBackup="false" android:label="Axiora" android:icon="@drawable/ic_axiora"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".StudyActivity" android:exported="true"
             android:windowSoftInputMode="adjustResize">

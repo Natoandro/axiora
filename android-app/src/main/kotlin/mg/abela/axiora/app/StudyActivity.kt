@@ -34,6 +34,13 @@ import java.time.Instant
 import java.util.concurrent.Executors
 
 class StudyActivity : Activity() {
+    private val ink = android.graphics.Color.rgb(38, 35, 33)
+    private val quietInk = android.graphics.Color.rgb(92, 85, 77)
+    private val paper = android.graphics.Color.rgb(244, 242, 235)
+    private val whitePaper = android.graphics.Color.rgb(254, 252, 246)
+    private val line = android.graphics.Color.rgb(212, 205, 193)
+    private val accent = android.graphics.Color.rgb(158, 42, 26)
+    private val deep = android.graphics.Color.rgb(37, 35, 33)
     private val main = Handler(Looper.getMainLooper())
     private lateinit var column: LinearLayout
     private var current: StudyView? = null
@@ -157,13 +164,15 @@ class StudyActivity : Activity() {
     private fun home() {
         work({ library() }) { library ->
             current = null
-            screen("Axiora")
+            screen("Home")
+            label("Pick up where you left off.", 15f)
             val unfinished = library.sessions.filter { it.status == SessionStatus.ACTIVE || it.status == SessionStatus.PAUSED }
             unfinished.firstOrNull()?.let { item ->
                 heading("Continue learning")
-                action(item.title) { work({ resume(item.id) }, success = ::study) }
+                action("${item.title}\nContinue learning") { work({ resume(item.id) }, success = ::study) }
             }
-            if (library.reviews.isNotEmpty()) heading("Due review")
+            heading("Due review")
+            if (library.reviews.isEmpty()) label("No reviews due today.", 15f)
             library.reviews.take(3).forEach { review ->
                 val objective =
                     review.unit.text
@@ -183,9 +192,13 @@ class StudyActivity : Activity() {
                     }
                 }
             }
+            heading("Also in progress")
+            if (unfinished.size > 1) unfinished.drop(1).forEach { item ->
+                action(item.title) { work({ resume(item.id) }, success = ::study) }
+            }
             heading("Course library")
             if (library.courses.isEmpty()) label("Import an Axiora course package (.axp) to study offline.")
-            action("Import course") { pick(IMPORT) }
+            action("Import course  +") { pick(IMPORT) }
             library.courses.forEach { entry ->
                 val course = entry.course
                 if (course == null) {
@@ -225,7 +238,8 @@ class StudyActivity : Activity() {
 
     private fun course(course: Course) {
         screen(course.title)
-        action("Library", ::home)
+        action("‹  Library", ::home)
+        label("A focused course for independent mathematical reasoning.", 15f)
         label("Version ${course.descriptor.version} · Review claim: ${course.review}")
         content(course.conventions)
         label(
@@ -356,7 +370,7 @@ class StudyActivity : Activity() {
         val progress = session.activityProgress()
         draftSequence = progress.draftRevision
         screen(view.unit.title)
-        action("Save and leave") { saveDraft(::home) }
+        action("‹  Save and leave") { saveDraft(::home) }
         val text = view.unit.activity(session.currentActivityId)
         if (session.status == SessionStatus.COMPLETED) {
             heading("Unit complete")
@@ -398,7 +412,9 @@ class StudyActivity : Activity() {
         text: JsonNode,
         progress: ActivityProgress,
     ) {
+        label("RECOGNITION QUESTION", 13f)
         content(text.path("prompt_md").asText())
+        label("Choose one answer", 14f)
         val options = RadioGroup(this)
         val ids = mutableMapOf<Int, String>()
         text.path("options").forEach { option ->
@@ -436,6 +452,7 @@ class StudyActivity : Activity() {
         text: JsonNode,
         progress: ActivityProgress,
     ) {
+        label("PROOF WORKSPACE", 13f)
         content(text.path("prompt_md").asText())
         text
             .path("hints")
@@ -503,7 +520,8 @@ class StudyActivity : Activity() {
             action("Save and leave") { saveDraft(::home) }
             content(text.path("prompt_md").asText())
         }
-        heading("Proof draft")
+        heading("Write a proof")
+        label("Your proof remains saved on this device. Self review does not certify correctness.", 14f)
         val field = writingField("Proof draft", progress.draft)
         editor = field
         status =
@@ -685,11 +703,12 @@ class StudyActivity : Activity() {
     private fun screen(title: String) {
         editor = null
         status = null
-        val scroll = ScrollView(this).apply { isFillViewport = true }
+        val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(paper) }
         column =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(24), dp(24), dp(24), dp(32))
+                setPadding(dp(24), dp(26), dp(24), dp(32))
+                setBackgroundColor(paper)
             }
         scroll.addView(
             column,
@@ -701,6 +720,24 @@ class StudyActivity : Activity() {
         )
         if (resources.displayMetrics.widthPixels > dp(760)) column.layoutParams.width = dp(760)
         setContentView(scroll)
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val mark = TextView(this@StudyActivity).apply {
+                text = "A"; textSize = 20f
+                typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(whitePaper); setBackgroundColor(deep)
+                layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+            }
+            addView(mark)
+            addView(TextView(this@StudyActivity).apply {
+                text = "AXIORA"; textSize = 14f; letterSpacing = .12f
+                setTextColor(ink); setPadding(dp(12), 0, 0, 0)
+            })
+            setPadding(0, 0, 0, dp(22))
+            column.addView(this)
+        }
         heading(title, 30f)
         this.title = title
     }
@@ -711,6 +748,8 @@ class StudyActivity : Activity() {
     ) {
         label(value, size).apply {
             typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.NORMAL)
+            setTextColor(ink)
+            setPadding(0, dp(12), 0, dp(12))
             if (android.os.Build.VERSION.SDK_INT >= 28) isAccessibilityHeading = true
         }
     }
@@ -723,6 +762,7 @@ class StudyActivity : Activity() {
         TextView(this).apply {
             text = value
             textSize = size
+            setTextColor(if (size <= 14f) quietInk else ink)
             setTextIsSelectable(selectable)
             setPadding(0, dp(8), 0, dp(8))
             column.addView(this)
@@ -749,9 +789,14 @@ class StudyActivity : Activity() {
             text = title
             isAllCaps = false
             textSize = 16f
+            setTextColor(accent)
+            backgroundTintList = android.content.res.ColorStateList.valueOf(whitePaper)
+            setPadding(dp(16), dp(10), dp(16), dp(10))
             minHeight = dp(48)
             setOnClickListener { if (!busy) click() }
-            column.addView(this, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            val params = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            params.bottomMargin = dp(8)
+            column.addView(this, params)
         }
 
     private fun writingField(
