@@ -172,9 +172,6 @@ legend, .editor-heading { font-size: .875rem; font-weight: 700; margin-block-end
   background: var(--white);
   cursor: pointer;
 }
-.option:has(input:checked) { border-color: var(--primary); background: var(--tint); }
-.option:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
-.option input { inline-size: 1.15rem; block-size: 1.15rem; margin: 0; }
 .feedback { margin-block-start: 1.1rem; }
 .feedback:not(:empty), .explanation, .hint {
   padding: .9rem 1rem;
@@ -320,3 +317,52 @@ summary { min-block-size: 3rem; padding: .7rem .15rem; color: var(--primary); fo
 .outline-group { margin-block: 1rem; }
 .outline-group summary { color: var(--ink); }
 .outline-group .catalog-row strong { font-weight: 400; }
+
+.heading-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem; }
+.preview-title { font: 400 1.6rem/1.2 var(--serif); margin-block-end: .3rem; }
+.preview-facts { margin-block: 1.25rem; }
+.preview-facts div { padding-block: .75rem; border-block-start: 1px solid var(--line); }
+.preview-facts div:last-child { border-block-end: 1px solid var(--line); }
+.preview-facts dt { font-weight: 700; }
+.preview-facts dd { margin: .25rem 0 0; color: var(--quiet); }
+.comparison-draft { padding: .15rem 1rem .85rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--white); }
+.comparison-draft p { overflow-wrap: anywhere; white-space: pre-wrap; }
+.solution-text { font: 1.125rem/1.55 var(--serif); }
+.rubric-intro { margin-block: .45rem 1rem; color: var(--quiet); }
+.rubric-item { margin-block-start: .8rem; }
+.rubric-item legend { margin-block-end: .4rem; }
+.rubric-options { display: flex; flex-wrap: wrap; gap: .5rem; }
+.rubric-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-block-size: 3rem;
+  padding-inline: .6rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  background: var(--white);
+  font-size: .8125rem;
+  cursor: pointer;
+}
+.option input, .rubric-options input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.option:has(input:checked), .rubric-options label:has(input:checked) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px currentColor;
+  background: var(--tint);
+}
+.option:has(input:focus-visible), .rubric-options label:has(input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+@media (forced-colors: active) {
+  .option:has(input:checked), .rubric-options label:has(input:checked) {
+    border: 2px solid Highlight;
+  }
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compare your proof · Axiora</title>
+  <link rel="stylesheet" href="assets/study.css">
+  <script src="assets/study.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="back" href="proof.html">Proof workspace</a>
+      <small class="prototype">UI prototype</small>
+    </header>
+    <main class="content task">
+      <p class="context">Prime versus maximal ideals</p>
+      <div class="intro">
+        <h1>Compare your proof</h1>
+        <p>Prove that a maximal ideal in a commutative ring with identity is prime.</p>
+      </div>
+      <details class="comparison-draft" id="comparison-draft" open>
+        <summary id="comparison-draft-label">Sample draft</summary>
+        <p id="comparison-draft-text">Since <var>M</var> is maximal, the quotient <var>R/M</var> is a field. So <var>M</var> is prime.</p>
+      </details>
+      <section class="section" aria-labelledby="model-title">
+        <h2 id="model-title">Model solution</h2>
+        <p class="solution-text">Since <var>M</var> is maximal, <var>R/M</var> is a field. If <var>xy</var> = 0 in this field and <var>x</var> is nonzero, multiplying by its inverse gives <var>y</var> = 0. Thus <var>R/M</var> is an integral domain, so <var>M</var> is prime.</p>
+      </section>
+      <section class="section" aria-labelledby="rubric-title">
+        <h2 id="rubric-title">Self-review</h2>
+        <p class="rubric-intro">A direct proof can also be valid. Use these criteria to check your own argument. Correctness remains unassessed.</p>
+        <div id="proof-rubric"></div>
+        <noscript><p>Enable JavaScript to try the self-review controls.</p></noscript>
+      </section>
+    </main>
+    <footer class="footer">
+      <a class="button" href="proof.html">Return to draft</a>
+    </footer>
+  </div>
+</body>
+</html>

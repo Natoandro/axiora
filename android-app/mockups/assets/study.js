@@ -56,16 +56,41 @@ if (question) {
 }
 
 const draft = document.querySelector('#draft');
+const draftKey = 'axiora.mockup.prime-versus-maximal.proof';
+const comparisonKey = draftKey + '.comparison';
 
 if (draft) {
   const status = document.querySelector('#save-status');
   const save = document.querySelector('#save-draft');
-  const key = 'axiora.mockup.prime-versus-maximal.proof';
+  const compare = document.querySelector('#compare-proof');
+
+  compare.addEventListener('click', (event) => {
+    try {
+      sessionStorage.setItem(comparisonKey, draft.value);
+    } catch {
+      event.preventDefault();
+      status.textContent = 'Comparison is unavailable because this browser blocked session storage.';
+    }
+  });
+
+  let comparisonDraft = null;
+  try {
+    comparisonDraft = sessionStorage.getItem(comparisonKey);
+    if (comparisonDraft !== null) {
+      draft.value = comparisonDraft;
+      sessionStorage.removeItem(comparisonKey);
+    }
+  } catch {
+    // A blocked comparison snapshot does not prevent editing the draft.
+  }
 
   try {
-    const savedDraft = localStorage.getItem(key);
-    if (savedDraft !== null) {
-      draft.value = savedDraft;
+    const savedDraft = localStorage.getItem(draftKey);
+    if (comparisonDraft === null && savedDraft !== null) draft.value = savedDraft;
+    if (draft.value !== (savedDraft ?? '')) {
+      status.textContent = 'Unsaved changes';
+      save.disabled = false;
+    } else if (savedDraft !== null) {
       status.textContent = 'Saved in this browser';
     }
   } catch {
@@ -79,11 +104,70 @@ if (draft) {
 
   save.addEventListener('click', () => {
     try {
-      localStorage.setItem(key, draft.value);
+      localStorage.setItem(draftKey, draft.value);
       status.textContent = 'Saved in this browser';
       save.disabled = true;
     } catch {
       status.textContent = 'Save failed. Copy your draft or try again.';
     }
+  });
+}
+
+const simulateImport = document.querySelector('#simulate-import');
+
+if (simulateImport) {
+  simulateImport.disabled = false;
+  simulateImport.addEventListener('click', () => {
+    document.querySelector('#import-status').textContent = 'Import preview complete. You can now open the sample course.';
+    simulateImport.hidden = true;
+    document.querySelector('#cancel-import').hidden = true;
+    const openSample = document.querySelector('#open-sample');
+    openSample.hidden = false;
+    openSample.focus();
+  });
+}
+
+const rubric = document.querySelector('#proof-rubric');
+
+if (rubric) {
+  const draftLabel = document.querySelector('#comparison-draft-label');
+  const draftText = document.querySelector('#comparison-draft-text');
+
+  try {
+    const snapshot = sessionStorage.getItem(comparisonKey);
+    draftLabel.textContent = snapshot === null ? 'Sample draft' : 'Your draft';
+    if (snapshot !== null) draftText.textContent = snapshot.trim() ? snapshot : 'Your draft is empty.';
+  } catch {
+    draftLabel.textContent = 'Sample draft';
+  }
+
+  const criteria = [
+    'Use a proper maximal ideal in a commutative ring with identity.',
+    'Justify why the quotient is a field, or give a direct argument.',
+    'Explain why the quotient has no zero divisors, or show primality directly.',
+    'Conclude that the ideal is prime.',
+  ];
+
+  criteria.forEach((criterion, index) => {
+    const field = document.createElement('fieldset');
+    field.className = 'rubric-item';
+    const legend = document.createElement('legend');
+    legend.textContent = criterion;
+    field.append(legend);
+
+    const choices = document.createElement('div');
+    choices.className = 'rubric-options';
+
+    for (const answer of ['Met', 'Not met', 'Unsure']) {
+      const label = document.createElement('label');
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'criterion-' + index;
+      radio.value = answer;
+      label.append(radio, answer);
+      choices.append(label);
+    }
+    field.append(choices);
+    rubric.append(field);
   });
 }

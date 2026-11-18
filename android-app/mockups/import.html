@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Import course · Axiora</title>
+  <link rel="stylesheet" href="assets/study.css">
+  <script src="assets/study.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="back" href="library.html">Library</a>
+      <small class="prototype">UI prototype</small>
+    </header>
+    <main class="content task">
+      <div class="intro">
+        <h1>Import course</h1>
+        <p>Preview a sample package before adding it to your library.</p>
+      </div>
+      <section aria-labelledby="import-course">
+        <h2 class="preview-title" id="import-course">Prime and maximal ideals</h2>
+        <p class="meta">Version 0.1.0 · 3 units</p>
+        <dl class="preview-facts">
+          <div><dt>Review status</dt><dd>Draft. Independent mathematical and teaching review is pending.</dd></div>
+          <div><dt>Conventions</dt><dd>Rings are commutative with identity. Prime and maximal ideals are proper.</dd></div>
+          <div><dt>Assumed knowledge</dt><dd>Ideals, quotient rings, integral domains, and fields.</dd></div>
+        </dl>
+      </section>
+      <p class="meta" id="import-status" role="status">This prototype uses a built-in sample. It makes no changes to your library.</p>
+    </main>
+    <footer class="footer">
+      <a class="button button--quiet" id="cancel-import" href="library.html">Cancel</a>
+      <button class="button" id="simulate-import" type="button" disabled>Simulate import</button>
+      <a class="button" id="open-sample" href="course.html?id=ideals" hidden>Open sample course</a>
+    </footer>
+  </div>
+</body>
+</html>
