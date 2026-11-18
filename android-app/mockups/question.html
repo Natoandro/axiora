@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recognition question · Axiora</title>
+  <link rel="stylesheet" href="assets/study.css">
+  <script src="assets/study.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="back" href="index.html">Home</a>
+      <small class="prototype">UI prototype</small>
+    </header>
+    <main class="content task">
+      <p class="context">Prime versus maximal ideals</p>
+      <div class="intro">
+        <h1>Is every prime ideal maximal?</h1>
+        <p>Assume a commutative ring with identity.</p>
+      </div>
+      <form id="question">
+        <fieldset>
+          <legend>Choose one answer</legend>
+          <div class="options">
+            <label class="option"><input type="radio" name="answer" value="yes" required> Yes</label>
+            <label class="option"><input type="radio" name="answer" value="no" required> No</label>
+          </div>
+        </fieldset>
+      </form>
+      <p class="feedback" id="feedback" role="status"></p>
+      <section class="explanation" id="example" aria-labelledby="example-title" hidden>
+        <h2 id="example-title">The zero ideal in the integers</h2>
+        <p id="example-text"></p>
+      </section>
+      <noscript><p>Enable JavaScript to try the question, or <a href="proof.html">open the proof screen</a>.</p></noscript>
+    </main>
+    <footer class="footer">
+      <button class="button" id="submit-answer" type="submit" form="question" disabled>Submit answer</button>
+      <button class="button button--quiet" id="retry" type="button" hidden>Try again</button>
+      <button class="button" id="show-example" type="button" hidden>See example</button>
+      <a class="button" id="next-proof" href="proof.html" hidden>Continue to proof</a>
+    </footer>
+  </div>
+</body>
+</html>

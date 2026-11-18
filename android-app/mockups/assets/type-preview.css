@@ -1,0 +1,17 @@
+@font-face { font-family: 'Preview Roboto'; src: url('type/Roboto-Regular.ttf'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Preview Roboto'; src: url('type/Roboto-Bold.ttf'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Preview EB Garamond'; src: url('type/EBGaramond12-Regular.woff'); font-weight: 400; font-display: swap; }
+
+.comparison { max-inline-size: 80rem; margin: auto; padding: 1.5rem; }
+.comparison > header { margin-block-end: 1.5rem; }
+.comparison > header h1 { font-size: 2.4rem; margin-block: .5rem; }
+.specimens { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: 1rem; }
+.specimen > p { color: var(--quiet); margin-block: .3rem .7rem; }
+.specimen .app { min-block-size: 32rem; margin: 0; border-radius: 1.15rem; box-shadow: none; }
+.specimen .intro h3 { font: 400 2rem/1.1 var(--serif); letter-spacing: -.02em; margin: 0; }
+.specimen .topbar { min-block-size: 3.5rem; }
+.specimen .content { padding-block: 1.25rem; }
+.type-android { --serif: 'Preview Roboto', sans-serif; font-family: 'Preview Roboto', sans-serif; }
+.type-notebook { --serif: 'Noto Serif', serif; font-family: 'Noto Sans', sans-serif; }
+.type-editorial { --serif: 'Preview EB Garamond', serif; font-family: 'Preview Roboto', sans-serif; }
+.type-editorial .intro h3 { font-size: 2.2rem; }

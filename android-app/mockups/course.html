@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Course · Axiora</title>
+  <link rel="stylesheet" href="assets/study.css">
+  <script src="assets/library.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="back" id="course-back" href="library.html">Library</a>
+      <small class="prototype">UI prototype</small>
+    </header>
+    <main class="content" id="course-content">
+      <div class="intro">
+        <h1 id="course-title">Course</h1>
+        <p id="course-description"></p>
+      </div>
+      <p class="meta" id="course-status"></p>
+      <a class="button course-resume" id="course-resume" href="question.html" hidden>Resume current unit</a>
+      <section class="section" id="course-outline" aria-labelledby="units-title" hidden>
+        <h2 id="units-title">Course units</h2>
+        <div class="catalog-controls">
+          <div>
+            <label for="unit-search">Search units</label>
+            <input id="unit-search" type="search" placeholder="Unit title">
+          </div>
+        </div>
+        <p class="meta catalog-count" id="unit-count" role="status"></p>
+        <div id="unit-groups"></div>
+      </section>
+      <noscript><p>Enable JavaScript to view the course outline.</p></noscript>
+    </main>
+  </div>
+</body>
+</html>

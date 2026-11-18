@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proof workspace · Axiora</title>
+  <link rel="stylesheet" href="assets/study.css">
+  <script src="assets/study.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="back" href="index.html">Home</a>
+      <small class="prototype">UI prototype</small>
+    </header>
+    <main class="content task">
+      <p class="context">Prime versus maximal ideals</p>
+      <div class="intro">
+        <h1>Write a proof</h1>
+      </div>
+      <section class="prompt" aria-labelledby="prompt-title">
+        <h2 id="prompt-title">Proof prompt</h2>
+        <p>Let <var class="math">R</var> be a commutative ring with identity and let <var class="math">M</var> be a maximal ideal. Prove that <var class="math">M</var> is prime.</p>
+      </section>
+      <div class="editor-heading">
+        <label for="draft">Your draft</label>
+        <small id="save-status" role="status"></small>
+      </div>
+      <textarea id="draft" placeholder="Start with what maximality tells you." aria-describedby="draft-help"></textarea>
+      <small id="draft-help">Use plain text or LaTeX source.</small>
+      <details>
+        <summary>Show a hint</summary>
+        <div class="hint">Recall the characterizations of maximal and prime ideals in terms of quotient rings.</div>
+      </details>
+      <noscript><p>Enable JavaScript to save a draft in this browser.</p></noscript>
+    </main>
+    <footer class="footer">
+      <button class="button" id="save-draft" type="button" disabled>Save draft</button>
+    </footer>
+  </div>
+</body>
+</html>
