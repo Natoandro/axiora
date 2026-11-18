@@ -1,8 +1,8 @@
 # Axiora implementation plan
 
-**Status:** active execution plan · 17 November 2026. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. The Android vertical slice builds locally. Phase 5 device acceptance keeps M3 open. See the [implementation status record](IMPLEMENTATION_STATUS.md).
+**Status:** active execution plan · 18 November 2026. Phases 1–4 are complete at the JVM layer. Phase 5 and M3 were accepted by owner waiver with device checks still unverified; see [ADR-015](docs/markdown/decisions.md#adr-015--accept-the-android-vertical-slice-with-device-checks-waived) and the [implementation status record](IMPLEMENTATION_STATUS.md). Course review remains pending.
 
-This plan turns the [delivery milestones](docs/markdown/delivery.md) into reviewable work. The detailed [content contract](docs/markdown/content.md), [learner-state contract](docs/markdown/learner-state.md), and [decision log](docs/markdown/decisions.md) remain authoritative. A phase is complete only when its observable exit criteria pass; creating directories or screens is insufficient.
+This plan turns the [delivery milestones](docs/markdown/delivery.md) into reviewable work. The detailed [content contract](docs/markdown/content.md), [learner-state contract](docs/markdown/learner-state.md), and [decision log](docs/markdown/decisions.md) remain authoritative. A phase is complete when its observable exit criteria pass or an owner-approved deviation is recorded. Waived checks must remain explicitly unverified; creating directories or screens is insufficient.
 
 ## Target and boundaries
 
@@ -21,7 +21,7 @@ No backend, account, cloud synchronization, arbitrary PDF ingestion, general the
 | 2 | M1 | Reproducible packages and safe archive reader | Phase 1 |
 | 3 | M2 — complete | Deterministic headless study and review engine | Phase 1; Phase 2 for packaged end-to-end verification |
 | 4 | M3 | Durable local storage, import recovery, backup and restore | Phases 2–3 |
-| 5 | M3 | Accessible Android learning loop | Phase 4; rendering spike may begin during Phase 3 |
+| 5 | M3 — accepted by waiver | Android learning loop; device gaps remain open | Phase 4; rendering spike may begin during Phase 3 |
 | 6 | M4 | Reviewed course slice and local pilot | Phase 5; content drafting begins during Phase 1 |
 | 7 | M5 — conditional | Optional authoring assistance | Phase 6 and evidence of authoring need |
 
@@ -159,6 +159,8 @@ Work in this order:
 
 **Handoff:** installable Android build, device validation record, known limitations, and instructions for reproducing the demo. This closes M3; it is not yet a reviewed course release.
 
+**Owner disposition (18 November 2026):** Phase 5 and M3 are accepted under [ADR-015](docs/markdown/decisions.md#adr-015--accept-the-android-vertical-slice-with-device-checks-waived). TalkBack, API 26, representative ARM64, tablet, and a fresh offline end-to-end run remain unverified. This waiver does not establish release readiness; complete those checks before an external pilot or release.
+
 ## Phase 6 — Review the course and run a pilot
 
 **Outcome:** a small reviewed course and observed learner use establish what to improve next.
@@ -195,9 +197,9 @@ Work in this order:
 - Ship small reviewable changes within each phase: one rule family, command path, recovery behavior, or usable screen flow at a time.
 - Begin each change with the relevant contract and an observable acceptance case. Add meaningful tests for behavior and failure paths; avoid tests that merely mirror static declarations.
 - Update models, examples, compatibility notes, and decisions together when a contract changes. Do not silently carry evidence across content revisions.
-- Keep a phase acceptance record listing what passed, the environment, remaining defects, and any recorded departures. Unmet exit criteria keep the phase open.
+- Keep a phase acceptance record listing what passed, the environment, remaining defects, and any recorded departures. Unmet exit criteria keep the phase open unless an owner-approved deviation explicitly accepts the gap.
 - Continue the existing documentation freshness and link checks. Document new build and test commands only when they actually exist.
 
 ## Next concrete change
 
-Use the [Android demo](android-app/README.md) and the [implementation status record](IMPLEMENTATION_STATUS.md#phase-5--android-rendering-and-storage-compatibility) to finish Phase 5 device acceptance. Keep M3 open until the recorded device acceptance gate passes. Do not describe hashes as authenticated authorship.
+Proceed to Phase 6: complete scoped mathematical and teaching review of the three-unit course slice, then prepare a local pilot plan. Keep the Phase 5 device gaps visible and resolve them before an external pilot or release. Do not describe hashes as authenticated authorship.

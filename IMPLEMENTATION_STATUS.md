@@ -1,6 +1,6 @@
 # Implementation status
 
-This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. Phase 5 has an installable Android vertical slice. M3 remains open for device acceptance and course review remains pending.
+This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–4 are complete at the JVM layer. Phase 5 and M3 were accepted by owner waiver on 18 November 2026; the waived device checks remain unverified, not passed. See [ADR-015](docs/markdown/decisions.md#adr-015--accept-the-android-vertical-slice-with-device-checks-waived). Course review remains pending.
 
 ## Phase 1 — complete
 
@@ -92,8 +92,10 @@ Using the same offline setup, the test installed version 0.2.1 and reopened a ve
 
 **Automated checks:** JVM tests and Kotlin lint passed with both Android modules enabled. The focused shared checks cover review entry validation and durable submission order across command replay. The Rust workspace and Tier 1 font test passed. The handbook build and link/content checks passed.
 
+**Rechecked 18 November 2026:** `ANDROID_HOME=/home/natoandro/Android/Sdk GRADLE_USER_HOME=/tmp/axiora-gradle CARGO_NET_OFFLINE=true bash android-app/build.sh --offline` rebuilt and signed the APK; `apksigner verify` passed. `GRADLE_USER_HOME=/tmp/axiora-gradle ./gradlew --offline --no-daemon -PandroidSdk=/home/natoandro/Android/Sdk test ktlintCheck` passed after applying ktlint formatting to four Android app source files. A clean temporary Pixel 3a API 30 x86 emulator installed and launched the APK. A UI hierarchy check confirmed that Tab focuses **Continue learning**. This image has no installed TalkBack service. A fresh offline end-to-end run was not established: Wi-Fi remained active during the shell-driven airplane-mode attempt, so this run is not counted as offline coverage. The local SDK has an API 30 x86 system image only; API 26, representative ARM64, and tablet device checks were unavailable.
+
 **Known limits:** Full Markdown formatting, localizable Android strings, and proof reminder controls are pending. The app renders supported dollar-delimited math in place and displays other Markdown as readable source. Unsupported or oversized formulas retain their LaTeX at the original position. Large record reads near Android cursor-window limits are still unverified.
 
 **Display checks on the API 30 emulator:** At 320 dp and 2.0 font scale, Tab focused **Continue learning** and the learner could reach the question, formula previews, remediation and proof save action by scrolling. At an 800 dp emulated width, the proof editor and save actions remained available. This checks both layout widths on the phone emulator. It provides partial A01 evidence.
 
-**Exit gate:** M3 remains open. The API 30 emulator covered the core offline flows, including system document selection by keyboard. Full TalkBack and keyboard traversal, API 26, and representative ARM64 and tablet device checks remain open.
+**Owner disposition (18 November 2026):** Phase 5 and M3 accepted under [ADR-015](docs/markdown/decisions.md#adr-015--accept-the-android-vertical-slice-with-device-checks-waived), at the owner's direction to skip the remaining checks. Earlier API 30 emulator runs covered the core offline flows, including system document selection by keyboard; the final recheck confirmed a clean install, launch, and keyboard focus on **Continue learning**. Full TalkBack traversal, API 26, representative ARM64, tablet behavior, and a fresh offline end-to-end run remain explicitly unverified. Complete them before an external pilot or release. Phase 6 course review remains pending.

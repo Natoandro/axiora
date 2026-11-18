@@ -26,9 +26,18 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
         failure: (Throwable) -> Unit = ::showError,
         success: (T) -> Unit,
     )
+
     protected abstract fun pick(operation: Int)
-    protected abstract fun confirm(title: String, message: String, action: String, onConfirm: () -> Unit)
+
+    protected abstract fun confirm(
+        title: String,
+        message: String,
+        action: String,
+        onConfirm: () -> Unit,
+    )
+
     protected abstract fun showError(error: Throwable)
+
     protected abstract fun showStudy(view: StudyView)
 
     protected fun home() {
@@ -66,8 +75,10 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
                 }
             }
             heading("Also in progress")
-            if (unfinished.size > 1) unfinished.drop(1).forEach { item ->
-                catalogRow(item.title, "Continue learning") { work({ resume(item.id) }, success = ::showStudy) }
+            if (unfinished.size > 1) {
+                unfinished.drop(1).forEach { item ->
+                    catalogRow(item.title, "Continue learning") { work({ resume(item.id) }, success = ::showStudy) }
+                }
             }
             if (unfinished.size > 1) textAction("See all in progress") { libraryScreen(showInProgress = true) }
         }
@@ -77,9 +88,10 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
         work({ library() }) { library ->
             current = null
             screen("Library", "Library", showTitle = false)
-            val intro = LinearLayout(this).apply {
-                gravity = android.view.Gravity.CENTER_VERTICAL
-            }
+            val intro =
+                LinearLayout(this).apply {
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                }
             column.addView(intro)
             heading("Library", 30f, parent = intro).layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
             action("Import course", intro) { pick(IMPORT_DOCUMENT_REQUEST) }.apply {
@@ -87,57 +99,85 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
                 maxWidth = resources.displayMetrics.widthPixels / 2
             }
             label("Browse courses installed on this device.", 15f)
-            val search = EditText(this).apply {
-                hint = "Search courses"
-                contentDescription = "Search courses"
-                setSingleLine(true)
-                setPadding(dp(14), dp(10), dp(14), dp(10))
-                setTextColor(ink)
-                setHintTextColor(quietInk)
-                backgroundTintList = android.content.res.ColorStateList.valueOf(line)
-            }
+            val search =
+                EditText(this).apply {
+                    hint = "Search courses"
+                    contentDescription = "Search courses"
+                    setSingleLine(true)
+                    setPadding(dp(14), dp(10), dp(14), dp(10))
+                    setTextColor(ink)
+                    setHintTextColor(quietInk)
+                    backgroundTintList =
+                        android.content.res.ColorStateList
+                            .valueOf(line)
+                }
             column.addView(search, LinearLayout.LayoutParams(-1, dp(52)))
-            val filter = Spinner(this).apply {
-                adapter = android.widget.ArrayAdapter(
-                    this@StudyActivityLibraryUi,
-                    android.R.layout.simple_spinner_dropdown_item,
-                    listOf("All courses", "In progress", "Ready to start"),
-                )
-            }
+            val filter =
+                Spinner(this).apply {
+                    adapter =
+                        android.widget.ArrayAdapter(
+                            this@StudyActivityLibraryUi,
+                            android.R.layout.simple_spinner_dropdown_item,
+                            listOf("All courses", "In progress", "Ready to start"),
+                        )
+                }
             if (showInProgress) filter.setSelection(1)
             column.addView(filter)
             val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             column.addView(list)
+
             fun render() {
                 list.removeAllViews()
-                val term = search.text.toString().trim().lowercase()
-                val activeRevisions = library.sessions.filter {
-                    it.status == SessionStatus.ACTIVE || it.status == SessionStatus.PAUSED
-                }.mapNotNull { it.revision }.toSet()
-                val courses = library.courses.filter { item ->
-                    val course = item.course
-                    val matches = course?.title.orEmpty().lowercase().contains(term) ||
-                        item.record.packageId.lowercase().contains(term)
-                    val ongoing = course?.units?.any { it.revision in activeRevisions } == true
-                    val stateMatches = when (filter.selectedItemPosition) {
-                        1 -> ongoing
-                        2 -> !ongoing
-                        else -> true
+                val term =
+                    search.text
+                        .toString()
+                        .trim()
+                        .lowercase()
+                val activeRevisions =
+                    library.sessions
+                        .filter {
+                            it.status == SessionStatus.ACTIVE || it.status == SessionStatus.PAUSED
+                        }.mapNotNull { it.revision }
+                        .toSet()
+                val courses =
+                    library.courses.filter { item ->
+                        val course = item.course
+                        val matches =
+                            course
+                                ?.title
+                                .orEmpty()
+                                .lowercase()
+                                .contains(term) ||
+                                item.record.packageId
+                                    .lowercase()
+                                    .contains(term)
+                        val ongoing = course?.units?.any { it.revision in activeRevisions } == true
+                        val stateMatches =
+                            when (filter.selectedItemPosition) {
+                                1 -> ongoing
+                                2 -> !ongoing
+                                else -> true
+                            }
+                        matches && stateMatches
                     }
-                    matches && stateMatches
+                list.addView(
+                    TextView(this).apply {
+                        text = "${courses.size} courses"
+                        textSize = 13f
+                        setTextColor(quietInk)
+                        setPadding(0, dp(10), 0, dp(10))
+                    },
+                )
+                if (courses.isEmpty()) {
+                    list.addView(
+                        TextView(this).apply {
+                            text = "No matching courses. Import a course package to get started."
+                            textSize = 15f
+                            setTextColor(ink)
+                            setPadding(0, dp(8), 0, dp(8))
+                        },
+                    )
                 }
-                list.addView(TextView(this).apply {
-                    text = "${courses.size} courses"
-                    textSize = 13f
-                    setTextColor(quietInk)
-                    setPadding(0, dp(10), 0, dp(10))
-                })
-                if (courses.isEmpty()) list.addView(TextView(this).apply {
-                    text = "No matching courses. Import a course package to get started."
-                    textSize = 15f
-                    setTextColor(ink)
-                    setPadding(0, dp(8), 0, dp(8))
-                })
                 courses.forEach { item ->
                     val course = item.course
                     catalogRow(
@@ -147,15 +187,36 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
                     ) { course?.let(::course) }
                 }
             }
-            search.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = render()
-                override fun afterTextChanged(s: Editable?) = Unit
-            })
-            filter.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
-                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) = render()
-            }
+            search.addTextChangedListener(
+                object : TextWatcher {
+                    override fun beforeTextChanged(
+                        s: CharSequence?,
+                        start: Int,
+                        count: Int,
+                        after: Int,
+                    ) = Unit
+
+                    override fun onTextChanged(
+                        s: CharSequence?,
+                        start: Int,
+                        before: Int,
+                        count: Int,
+                    ) = render()
+
+                    override fun afterTextChanged(s: Editable?) = Unit
+                },
+            )
+            filter.onItemSelectedListener =
+                object : android.widget.AdapterView.OnItemSelectedListener {
+                    override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+
+                    override fun onItemSelected(
+                        parent: android.widget.AdapterView<*>?,
+                        view: View?,
+                        position: Int,
+                        id: Long,
+                    ) = render()
+                }
             render()
             if (library.sessions.isNotEmpty()) {
                 heading("Study history")
@@ -196,14 +257,20 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
                 textAction("Back to Home", ::home)
             }
             library.reviews.forEach { review ->
-                val objective = review.unit.text.path("objectives").firstOrNull {
-                    it.path("id").asText() == review.task.objectiveId
-                }?.path("description")?.asText().orEmpty()
-                val detail = buildString {
-                    append(objective)
-                    append(" · Due ${review.task.dueDate}")
-                    if (review.freshActivity == null) append(" · Fresh check unavailable; practice this unit")
-                }
+                val objective =
+                    review.unit.text
+                        .path("objectives")
+                        .firstOrNull {
+                            it.path("id").asText() == review.task.objectiveId
+                        }?.path("description")
+                        ?.asText()
+                        .orEmpty()
+                val detail =
+                    buildString {
+                        append(objective)
+                        append(" · Due ${review.task.dueDate}")
+                        if (review.freshActivity == null) append(" · Fresh check unavailable; practice this unit")
+                    }
                 catalogRow(review.unit.title, detail) {
                     if (review.freshActivity == null) {
                         work({ start(review.unit) }, success = ::showStudy)
@@ -241,29 +308,39 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
             }
         }
         heading("Course units")
-        val unitSearch = EditText(this).apply {
-            hint = "Search units"
-            contentDescription = "Search units"
-            setSingleLine(true)
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-            backgroundTintList = android.content.res.ColorStateList.valueOf(line)
-        }
+        val unitSearch =
+            EditText(this).apply {
+                hint = "Search units"
+                contentDescription = "Search units"
+                setSingleLine(true)
+                setPadding(dp(14), dp(10), dp(14), dp(10))
+                backgroundTintList =
+                    android.content.res.ColorStateList
+                        .valueOf(line)
+            }
         column.addView(unitSearch, LinearLayout.LayoutParams(-1, dp(52)))
         val unitCount = label("${course.units.size} units", 13f)
         val units = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(units)
+
         fun renderUnits() {
             units.removeAllViews()
-            val term = unitSearch.text.toString().trim().lowercase()
+            val term =
+                unitSearch.text
+                    .toString()
+                    .trim()
+                    .lowercase()
             val matching = course.units.filter { it.title.lowercase().contains(term) }
             unitCount.text = "${matching.size} of ${course.units.size} units"
             if (matching.isEmpty()) {
-                units.addView(TextView(this).apply {
-                    text = "No matching units. Try another title."
-                    textSize = 15f
-                    setTextColor(ink)
-                    setPadding(0, dp(8), 0, dp(8))
-                })
+                units.addView(
+                    TextView(this).apply {
+                        text = "No matching units. Try another title."
+                        textSize = 15f
+                        setTextColor(ink)
+                        setPadding(0, dp(8), 0, dp(8))
+                    },
+                )
             }
             matching.forEach { unit ->
                 val prerequisites = unit.text.path("requires_concepts").map { it.asText() }
@@ -271,11 +348,25 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
                 catalogRow(unit.title, detail, units) { work({ start(unit) }, success = ::showStudy) }
             }
         }
-        unitSearch.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = renderUnits()
-            override fun afterTextChanged(s: Editable?) = Unit
-        })
+        unitSearch.addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int,
+                ) = Unit
+
+                override fun onTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int,
+                ) = renderUnits()
+
+                override fun afterTextChanged(s: Editable?) = Unit
+            },
+        )
         renderUnits()
         action("Remove this revision from library") {
             confirm("Remove from library?", "Existing attempts, notes and pinned sessions remain available.", "Remove") {
@@ -298,7 +389,12 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
         heading(course.title, 25f)
         label("Version ${course.descriptor.version} · ${course.units.size} units", 13f)
         heading("Review status", 17f)
-        label("${course.review.replace('_', ' ').replaceFirstChar { it.uppercase() }}. ${course.manifest.path("review").path("note").asText()}")
+        label(
+            "${course.review.replace(
+                '_',
+                ' ',
+            ).replaceFirstChar { it.uppercase() }}. ${course.manifest.path("review").path("note").asText()}",
+        )
         heading("Conventions", 17f)
         content(course.conventions)
         heading("Assumed knowledge", 17f)
@@ -381,5 +477,4 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
         }
         dialog.show()
     }
-
 }

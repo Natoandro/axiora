@@ -6,8 +6,8 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
-import android.widget.EditText
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
@@ -29,8 +29,13 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
     protected abstract val main: Handler
     protected abstract val autosave: Runnable
     protected abstract var draftSequence: Long
+
     protected abstract fun saveDraft(after: (() -> Unit)? = null)
-    protected abstract fun send(command: StudyCommand, then: (() -> Unit)? = null)
+
+    protected abstract fun send(
+        command: StudyCommand,
+        then: (() -> Unit)? = null,
+    )
 
     protected fun study(view: StudyView) {
         current = view
@@ -38,13 +43,14 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
         val progress = session.activityProgress()
         draftSequence = progress.draftRevision
         val activity = session.unit.activities.getValue(session.currentActivityId)
-        val title = when (activity) {
-            is Choice -> "Recognition question"
-            is Proof -> if (progress.proofSubmitted) "Proof workspace" else "Write a proof"
-            is Reflection -> "Reflection"
-            is End -> "Unit complete"
-            is Exposition -> view.unit.title
-        }
+        val title =
+            when (activity) {
+                is Choice -> "Recognition question"
+                is Proof -> if (progress.proofSubmitted) "Proof workspace" else "Write a proof"
+                is Reflection -> "Reflection"
+                is End -> "Unit complete"
+                is Exposition -> view.unit.title
+            }
         screen(title, backLabel = "Save and leave", showTitle = activity !is Choice) { saveDraft(::home) }
         val text = view.unit.activity(session.currentActivityId)
         if (session.status == SessionStatus.COMPLETED) {
@@ -85,7 +91,8 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
         }
         if (focusedTask && objectives.isNotBlank()) {
             textAction("Learning objectives") {
-                AlertDialog.Builder(this)
+                AlertDialog
+                    .Builder(this)
                     .setTitle("Learning objectives")
                     .setMessage(objectives)
                     .setPositiveButton("Close", null)
@@ -205,7 +212,13 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
         label(current?.unit?.title.orEmpty(), 14f)
         card {
             heading("Your submitted proof", 18f)
-            content(progress.attempts.lastOrNull()?.response.orEmpty(), this)
+            content(
+                progress.attempts
+                    .lastOrNull()
+                    ?.response
+                    .orEmpty(),
+                this,
+            )
         }
         heading("Model solution", 21f)
         content(text.path("model_solution_md").asText())
@@ -219,15 +232,17 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
                 val group = RadioGroup(this@StudyActivityLessonUi)
                 val ids = mutableMapOf<Int, RubricMark>()
                 RubricMark.entries.forEach { mark ->
-                    val button = RadioButton(this@StudyActivityLessonUi).apply {
-                        id = View.generateViewId()
-                        minHeight = dp(48)
-                        this.text = when (mark) {
-                            RubricMark.MET -> "Met"
-                            RubricMark.NOT_MET -> "Not met"
-                            RubricMark.UNSURE -> "Unsure"
+                    val button =
+                        RadioButton(this@StudyActivityLessonUi).apply {
+                            id = View.generateViewId()
+                            minHeight = dp(48)
+                            this.text =
+                                when (mark) {
+                                    RubricMark.MET -> "Met"
+                                    RubricMark.NOT_MET -> "Not met"
+                                    RubricMark.UNSURE -> "Unsure"
+                                }
                         }
-                    }
                     ids[button.id] = mark
                     group.addView(button)
                     if (marks[key] == mark) group.check(button.id)
@@ -347,5 +362,4 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
     protected fun next() {
         action("Continue") { send(StudyCommand.Continue(newId())) }
     }
-
 }

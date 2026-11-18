@@ -20,8 +20,11 @@ internal class StudyActivity : StudyActivityLessonUi() {
     override val uiBusy: Boolean get() = busy
 
     override fun navigateHome() = home()
+
     override fun navigateLibrary() = libraryScreen()
+
     override fun navigateReview() = reviewScreen()
+
     override fun showStudy(view: StudyView) = study(view)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,7 +137,11 @@ internal class StudyActivity : StudyActivityLessonUi() {
             val preview = pendingImport ?: return
             pendingImport = null
             work({ discard(preview) }) { libraryScreen() }
-        } else if (current != null) saveDraft(::home) else super.onBackPressed()
+        } else if (current != null) {
+            saveDraft(::home)
+        } else {
+            super.onBackPressed()
+        }
     }
 
     protected override fun saveDraft(after: (() -> Unit)?) {

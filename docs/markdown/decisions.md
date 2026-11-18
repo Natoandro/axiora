@@ -136,7 +136,7 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 
 ## ADR-012 â€” Relational learner records and durable command receipts
 
-**Status:** adopted for the JVM learner repository. Phase 5 also implements a framework SQLite driver. The Android vertical slice uses this driver. Device acceptance remains open.
+**Status:** adopted for the JVM learner repository. Phase 5 also implements a framework SQLite driver. The Android vertical slice uses this driver. Its remaining device checks were waived for this milestone by ADR-015; coverage gaps remain documented in the implementation status record.
 
 **Problem:** The headless engine can produce a new checkpoint, attempts, and events, but process restart currently loses them and replaying a command can apply it twice.
 
@@ -175,3 +175,17 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 **Compatibility:** Read schema 0.1 as an implicit course keyed by package ID, with all manifest units in one untitled section. An upgraded descriptor can preserve that Library identity by adopting the old package ID as its course ID. Preserve exact package and unit references in learner records.
 
 **Reopen when:** Reviewed content requires shared units across separately distributed courses, multiple courses shipped together, or semantic sections with their own objectives.
+
+## ADR-015 â€” Accept the Android vertical slice with device checks waived
+
+**Status:** accepted by the owner for this prototype milestone on 18 November 2026. This does not claim the waived checks passed.
+
+**Problem:** Phase 5 has a signed, installable Android vertical slice and prior API 30 offline flow evidence, but the available environment does not provide TalkBack, API 26, representative ARM64, or tablet targets. A fresh offline end-to-end run could not be established during the final recheck.
+
+**Decision:** Stop the remaining device checks at the owner's direction. Accept Phase 5 and close M3 with the unverified checks recorded as limitations. Keep their evidence state explicit; do not report them as passed. Course review and pilot work remain Phase 6.
+
+**Tradeoff:** The milestone can proceed without waiting for unavailable devices, while accessibility, minimum-version, ARM64, tablet, and fresh offline-loop risks remain unresolved. This acceptance is for the local prototype and does not establish release readiness or replace a future device matrix.
+
+**Affected scope:** The Phase 5 device-acceptance exit criteria and M3 milestone disposition in `IMPLEMENTATION_PLAN.md` and `IMPLEMENTATION_STATUS.md`. No package, learner-data, or application behavior contract changes; no data migration is required.
+
+**Reopen when:** Before an external pilot or release, run the waived TalkBack, API 26, ARM64, tablet, and offline end-to-end checks on recorded targets, resolve blockers, and update the acceptance record. Preserve all earlier evidence and distinguish new results from the waived checks.
