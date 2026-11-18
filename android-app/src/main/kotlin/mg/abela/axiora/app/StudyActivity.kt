@@ -1,56 +1,28 @@
 package mg.abela.axiora.app
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
-import android.widget.ScrollView
 import android.widget.TextView
-import com.fasterxml.jackson.databind.JsonNode
-import mg.abela.axiora.content.Choice
-import mg.abela.axiora.content.End
-import mg.abela.axiora.content.Exposition
-import mg.abela.axiora.content.Proof
-import mg.abela.axiora.content.Reflection
-import mg.abela.axiora.learning.ActivityProgress
-import mg.abela.axiora.learning.AttemptOutcome
-import mg.abela.axiora.learning.RubricMark
-import mg.abela.axiora.learning.SessionStatus
 import mg.abela.axiora.learning.StudyCommand
-import mg.abela.axiora.storage.StoredNote
-import java.time.Instant
 import java.util.concurrent.Executors
 
-class StudyActivity : Activity() {
-    private val ink = android.graphics.Color.rgb(38, 35, 33)
-    private val quietInk = android.graphics.Color.rgb(92, 85, 77)
-    private val paper = android.graphics.Color.rgb(244, 242, 235)
-    private val whitePaper = android.graphics.Color.rgb(254, 252, 246)
-    private val line = android.graphics.Color.rgb(212, 205, 193)
-    private val accent = android.graphics.Color.rgb(158, 42, 26)
-    private val deep = android.graphics.Color.rgb(37, 35, 33)
-    private val main = Handler(Looper.getMainLooper())
-    private lateinit var column: LinearLayout
-    private var current: StudyView? = null
-    private var editor: EditText? = null
-    private var status: TextView? = null
-    private var draftSequence = 0L
+internal class StudyActivity : StudyActivityLessonUi() {
+    protected override val main = Handler(Looper.getMainLooper())
+    override var current: StudyView? = null
+    protected override var draftSequence = 0L
     private var busy = false
     private var stopped = false
-    private val autosave = Runnable { saveDraft() }
-    private val font by lazy { runCatching { assets.open("math.otf").use { it.readBytes() } }.getOrNull() }
+    protected override val autosave = Runnable { saveDraft(null) }
+    override val font by lazy { runCatching { assets.open("math.otf").use { it.readBytes() } }.getOrNull() }
+    override val uiBusy: Boolean get() = busy
+
+    override fun navigateHome() = home()
+    override fun navigateLibrary() = libraryScreen()
+    override fun navigateReview() = reviewScreen()
+    override fun showStudy(view: StudyView) = study(view)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,7 +59,7 @@ class StudyActivity : Activity() {
                 }
             }
         } else {
-            saveDraft()
+            saveDraft(null)
         }
         super.onStop()
     }
@@ -108,7 +80,7 @@ class StudyActivity : Activity() {
         val uri = data?.data ?: return
         if (resultCode != RESULT_OK) return
         when (requestCode) {
-            IMPORT -> {
+            IMPORT_DOCUMENT_REQUEST -> {
                 val cancelled =
                     java.util.concurrent.atomic
                         .AtomicBoolean()
@@ -135,11 +107,11 @@ class StudyActivity : Activity() {
                 }
             }
 
-            EXPORT -> {
+            EXPORT_DOCUMENT_REQUEST -> {
                 work({ export(uri) }) { notice("Backup saved", "Your learner records were written to the selected file.") }
             }
 
-            RESTORE -> {
+            RESTORE_DOCUMENT_REQUEST -> {
                 work({ restore(uri) }) { missing ->
                     home()
                     notice(
@@ -158,467 +130,14 @@ class StudyActivity : Activity() {
     @Deprecated("Framework back navigation.")
     override fun onBackPressed() {
         if (busy) return
-        if (current != null) saveDraft(::home) else super.onBackPressed()
+        if (pendingImport != null) {
+            val preview = pendingImport ?: return
+            pendingImport = null
+            work({ discard(preview) }) { libraryScreen() }
+        } else if (current != null) saveDraft(::home) else super.onBackPressed()
     }
 
-    private fun home() {
-        work({ library() }) { library ->
-            current = null
-            screen("Home")
-            label("Pick up where you left off.", 15f)
-            val unfinished = library.sessions.filter { it.status == SessionStatus.ACTIVE || it.status == SessionStatus.PAUSED }
-            unfinished.firstOrNull()?.let { item ->
-                heading("Continue learning")
-                action("${item.title}\nContinue learning") { work({ resume(item.id) }, success = ::study) }
-            }
-            heading("Due review")
-            if (library.reviews.isEmpty()) label("No reviews due today.", 15f)
-            library.reviews.take(3).forEach { review ->
-                val objective =
-                    review.unit.text
-                        .path("objectives")
-                        .firstOrNull {
-                            it.path("id").asText() == review.task.objectiveId
-                        }?.path("description")
-                        ?.asText()
-                        .orEmpty()
-                label("$objective\nDue ${review.task.dueDate}")
-                if (review.freshActivity == null) {
-                    label("A fresh check is unavailable. You can revisit this unit for practice.")
-                    action("Practice · ${review.unit.title}") { work({ start(review.unit) }, success = ::study) }
-                } else {
-                    action("Start fresh check · ${review.unit.title}") {
-                        work({ start(review.unit, review.freshActivity) }, success = ::study)
-                    }
-                }
-            }
-            heading("Also in progress")
-            if (unfinished.size > 1) unfinished.drop(1).forEach { item ->
-                action(item.title) { work({ resume(item.id) }, success = ::study) }
-            }
-            heading("Course library")
-            if (library.courses.isEmpty()) label("Import an Axiora course package (.axp) to study offline.")
-            action("Import course  +") { pick(IMPORT) }
-            library.courses.forEach { entry ->
-                val course = entry.course
-                if (course == null) {
-                    label(
-                        "Missing course · ${entry.record.packageId} ${entry.record.packageVersion}\nReimport this exact revision to resume.",
-                    )
-                } else {
-                    action("${course.title} · ${course.descriptor.version}") { course(course) }
-                }
-            }
-            if (library.sessions.isNotEmpty()) {
-                heading("Study history")
-                library.sessions.forEach { entry ->
-                    val revision = entry.revision?.packageVersion
-                    val state = entry.status?.name?.lowercase() ?: "missing course"
-                    action("${entry.title} · $revision · $state") { history(entry) }
-                }
-            }
-            action("Notes") { notes() }
-            heading("Learner data")
-            action("Export learner backup") {
-                confirm(
-                    "Export personal data?",
-                    "The backup is readable JSON containing proofs, drafts and notes. Choose where it will be saved.",
-                    "Choose destination",
-                ) { pick(EXPORT) }
-            }
-            action("Restore learner backup") {
-                confirm(
-                    "Restore learner backup?",
-                    "Restore requires an empty learner profile. Course files are imported separately.",
-                    "Choose backup",
-                ) { pick(RESTORE) }
-            }
-        }
-    }
-
-    private fun course(course: Course) {
-        screen(course.title)
-        action("‹  Library", ::home)
-        label("A focused course for independent mathematical reasoning.", 15f)
-        label("Version ${course.descriptor.version} · Review claim: ${course.review}")
-        content(course.conventions)
-        label(
-            course.manifest
-                .path("review")
-                .path("note")
-                .asText(),
-        )
-        heading("Units")
-        course.units.forEach { unit ->
-            heading(unit.title)
-            val prerequisites = unit.text.path("requires_concepts").map { it.asText() }
-            if (prerequisites.isNotEmpty()) label("Assumed knowledge: ${prerequisites.joinToString()}")
-            action("Start ${unit.title}") { work({ start(unit) }, success = ::study) }
-        }
-        action("Remove this revision from library") {
-            confirm("Remove from library?", "Existing attempts, notes and pinned sessions remain available.", "Remove") {
-                work({
-                    store.setPackageActive(course.descriptor.packageId, course.descriptor.version, false)
-                }) { home() }
-            }
-        }
-    }
-
-    private fun confirmImport(preview: ImportPreview) {
-        val course = preview.course
-        val prerequisites = course.units.flatMap { it.text.path("requires_concepts").map { item -> item.asText() } }.distinct()
-        val versions = preview.existing.filter { it.active }.joinToString { it.packageVersion }
-        val message =
-            buildString {
-                appendLine("${course.descriptor.packageId} · ${course.descriptor.version}")
-                appendLine("Review claim: ${course.review}")
-                appendLine(
-                    course.manifest
-                        .path("review")
-                        .path("note")
-                        .asText(),
-                )
-                appendLine(course.conventions)
-                if (prerequisites.isNotEmpty()) appendLine("Assumed knowledge: ${prerequisites.joinToString()}")
-                if (versions.isNotEmpty()) {
-                    appendLine(
-                        "Installed versions: $versions. You can start work on either revision. In-progress sessions stay pinned.",
-                    )
-                }
-            }
-        val cancel = { work({ discard(preview) }) {} }
-        AlertDialog
-            .Builder(this)
-            .setTitle(course.title)
-            .setMessage(message)
-            .setNegativeButton(if (versions.isEmpty()) "Cancel" else "Keep existing") { _, _ -> cancel() }
-            .setOnCancelListener { cancel() }
-            .setPositiveButton("Import course") { _, _ -> work({ install(preview) }) { home() } }
-            .show()
-    }
-
-    private fun history(entry: SessionEntry) {
-        work({ store.attemptHistory(entry.id) }) { attempts ->
-            screen(entry.title)
-            action("Library", ::home)
-            if (entry.status == SessionStatus.ACTIVE || entry.status == SessionStatus.PAUSED) {
-                action("Continue existing work") { work({ resume(entry.id) }, success = ::study) }
-            }
-            if (entry.status == null) label("Reimport this exact course revision to resume.")
-            heading("Attempts")
-            if (attempts.isEmpty()) label("No submitted attempts.")
-            attempts.forEach { attempt ->
-                heading("${attempt.method.replace('_', ' ')} · ${attempt.outcome}")
-                content(attempt.contextSnapshot)
-                content(attempt.response)
-                val assistance = org.json.JSONObject(attempt.assistance.toString(Charsets.UTF_8))
-                label(
-                    "Hints opened: ${assistance.optJSONArray("revealed_hints")?.length() ?: 0}. " +
-                        "Solution opened: ${if (assistance.optBoolean("solution_revealed")) "yes" else "no"}.",
-                )
-            }
-        }
-    }
-
-    private fun notes(anchor: String? = null) {
-        work({ store.notes(anchor) }) { notes ->
-            screen("Notes")
-            action("Library", ::home)
-            if (notes.isEmpty()) label("No notes yet.")
-            notes.forEach { note ->
-                heading(note.contentId)
-                content(note.text)
-                action("Edit note") { editNote(note) }
-            }
-            action("New note") {
-                val now = Instant.now().toString()
-                editNote(StoredNote(newId(), anchor ?: "personal", null, "notes", "", now, now))
-            }
-        }
-    }
-
-    private fun editNote(note: StoredNote) {
-        val field =
-            EditText(this).apply {
-                setText(note.text)
-                hint = "Note"
-                minLines = 4
-            }
-        val dialog =
-            AlertDialog
-                .Builder(this)
-                .setTitle("Note")
-                .setView(field)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Save", null)
-                .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val text = field.text.toString()
-                work({ store.saveNote(note.copy(text = text, modifiedAt = Instant.now().toString())) }) {
-                    dialog.dismiss()
-                    notes()
-                }
-            }
-        }
-        dialog.show()
-    }
-
-    private fun study(view: StudyView) {
-        current = view
-        val session = view.session
-        val progress = session.activityProgress()
-        draftSequence = progress.draftRevision
-        screen(view.unit.title)
-        action("‹  Save and leave") { saveDraft(::home) }
-        val text = view.unit.activity(session.currentActivityId)
-        if (session.status == SessionStatus.COMPLETED) {
-            heading("Unit complete")
-            content(text.path("summary_md").asText())
-            action("Return to library", ::home)
-            return
-        }
-        val objectives =
-            view.unit.text
-                .path("objectives")
-                .joinToString("\n") { it.path("description").asText() }
-        if (objectives.isNotBlank()) label(objectives)
-        when (session.unit.activities.getValue(session.currentActivityId)) {
-            is Exposition -> {
-                content(text.path("content_md").asText())
-                next()
-            }
-
-            is Choice -> {
-                choice(text, progress)
-            }
-
-            is Proof -> {
-                proof(text, progress)
-            }
-
-            is Reflection -> {
-                reflection(text, progress)
-            }
-
-            is End -> {
-                content(text.path("summary_md").asText())
-                action("Finish unit") { send(StudyCommand.Continue(newId())) }
-            }
-        }
-    }
-
-    private fun choice(
-        text: JsonNode,
-        progress: ActivityProgress,
-    ) {
-        label("RECOGNITION QUESTION", 13f)
-        content(text.path("prompt_md").asText())
-        label("Choose one answer", 14f)
-        val options = RadioGroup(this)
-        val ids = mutableMapOf<Int, String>()
-        text.path("options").forEach { option ->
-            val button =
-                RadioButton(this).apply {
-                    id = View.generateViewId()
-                    minHeight = dp(48)
-                    setMathText(option.path("text_md").asText())
-                }
-            val key = option.path("id").asText()
-            ids[button.id] = key
-            options.addView(button)
-            if (key == progress.selectedOption) options.check(button.id)
-        }
-        column.addView(options)
-        val attempt = progress.attempts.lastOrNull()
-        if (progress.feedbackVisible && attempt != null) {
-            val correct = attempt.outcome == AttemptOutcome.CORRECT
-            heading(if (correct) "Correct · exact choice" else "Incorrect · exact choice")
-            content(text.path("feedback").path(if (correct) "correct_md" else "incorrect_md").asText())
-            if (attempt.sequence > 1) label("Retry · practice")
-            next()
-        }
-        val submit =
-            action(if (attempt == null) "Submit answer" else "Try again") {
-                send(StudyCommand.SubmitChoice(newId()))
-            }
-        submit.isEnabled = progress.selectedOption != null && !progress.feedbackVisible
-        options.setOnCheckedChangeListener { _, id ->
-            ids[id]?.let { send(StudyCommand.SelectChoice(newId(), it)) }
-        }
-    }
-
-    private fun proof(
-        text: JsonNode,
-        progress: ActivityProgress,
-    ) {
-        label("PROOF WORKSPACE", 13f)
-        content(text.path("prompt_md").asText())
-        text
-            .path("hints")
-            .filter { it.path("id").asText() in progress.assistance.revealedHints }
-            .forEach { content(it.path("content_md").asText()) }
-        if (progress.proofSubmitted && progress.draft != progress.attempts.last().response) {
-            proofEditor(text, progress, true)
-        } else if (progress.proofSubmitted) {
-            heading("Your submitted proof")
-            content(progress.attempts.last().response)
-            label(
-                "Self-review · unassessed\nHints opened: ${progress.assistance.revealedHints.size}. " +
-                    "Solution opened: ${if (progress.assistance.solutionRevealed) "yes" else "no"}.",
-            )
-            if (!progress.assistance.solutionRevealed) {
-                action("Show model solution") { send(StudyCommand.RevealSolution(newId())) }
-            }
-            if (progress.assistance.solutionRevealed) {
-                heading("Model solution")
-                content(text.path("model_solution_md").asText())
-            }
-            heading("Compare with the rubric")
-            label("An alternative proof can be valid. Use these criteria to review your own argument.")
-            val marks = progress.rubric.toMutableMap()
-            text.path("rubric").forEach { item ->
-                val key = item.path("id").asText()
-                content(item.path("criterion_md").asText())
-                val group = RadioGroup(this)
-                val ids = mutableMapOf<Int, RubricMark>()
-                RubricMark.entries.forEach { mark ->
-                    val button =
-                        RadioButton(this).apply {
-                            id = View.generateViewId()
-                            minHeight = dp(48)
-                            this.text =
-                                when (mark) {
-                                    RubricMark.MET -> "Met"
-                                    RubricMark.NOT_MET -> "Not met"
-                                    RubricMark.UNSURE -> "Unsure"
-                                }
-                        }
-                    ids[button.id] = mark
-                    group.addView(button)
-                    if (marks[key] == mark) group.check(button.id)
-                }
-                group.setOnCheckedChangeListener { _, id -> ids[id]?.let { marks[key] = it } }
-                column.addView(group)
-            }
-            action("Save self-review and continue") {
-                send(StudyCommand.RecordRubric(newId(), marks.toMap()), then = { send(StudyCommand.Continue(newId())) })
-            }
-            action("Revise proof") { proofEditor(text, progress, true) }
-        } else {
-            proofEditor(text, progress, false)
-        }
-    }
-
-    private fun proofEditor(
-        text: JsonNode,
-        progress: ActivityProgress,
-        revision: Boolean,
-    ) {
-        if (revision) {
-            screen("Revise proof")
-            action("Save and leave") { saveDraft(::home) }
-            content(text.path("prompt_md").asText())
-        }
-        heading("Write a proof")
-        label("Your proof remains saved on this device. Self review does not certify correctness.", 14f)
-        val field = writingField("Proof draft", progress.draft)
-        editor = field
-        status =
-            label(if (progress.draftRevision > 0) "Draft saved on this device" else "No draft saved yet").apply {
-                accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
-            }
-        field.addTextChangedListener(
-            object : TextWatcher {
-                override fun beforeTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    count: Int,
-                    after: Int,
-                ) = Unit
-
-                override fun onTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    before: Int,
-                    count: Int,
-                ) {
-                    status?.text = "Unsaved changes"
-                    main.removeCallbacks(autosave)
-                    main.postDelayed(autosave, 450)
-                }
-
-                override fun afterTextChanged(s: Editable?) = Unit
-            },
-        )
-        val symbols = LinearLayout(this)
-        listOf("∈", "⊂", "⇒", "∀", "∃").forEach { symbol ->
-            symbols.addView(
-                Button(this).apply {
-                    textSize = 18f
-                    this.text = symbol
-                    minWidth = 0
-                    minimumWidth = 0
-                    setPadding(0, 0, 0, 0)
-                    setOnClickListener {
-                        val start = field.selectionStart.coerceAtLeast(0)
-                        val end = field.selectionEnd.coerceAtLeast(0)
-                        field.text.replace(minOf(start, end), maxOf(start, end), symbol)
-                    }
-                },
-                LinearLayout.LayoutParams(0, dp(48), 1f),
-            )
-        }
-        column.addView(symbols)
-        action("Save draft") { saveDraft() }
-        action("Preview draft") {
-            val source = field.text.toString()
-            val dialog =
-                AlertDialog
-                    .Builder(this)
-                    .setTitle("Draft preview")
-                    .setMessage(source)
-                    .setPositiveButton("Return to draft", null)
-                    .show()
-            dialog.findViewById<TextView>(android.R.id.message)?.apply {
-                setTextIsSelectable(true)
-                post { setMathText(source) }
-            }
-        }
-        if (!revision) {
-            text.path("hints").firstOrNull { it.path("id").asText() !in progress.assistance.revealedHints }?.let { hint ->
-                action("Show a hint") { saveDraft { send(StudyCommand.RevealHint(newId(), hint.path("id").asText())) } }
-            }
-        }
-        action(if (revision) "Compare revised proof" else "Compare with solution") {
-            saveDraft {
-                send(StudyCommand.SubmitProof(newId()), then = { send(StudyCommand.RevealSolution(newId())) })
-            }
-        }
-        if (!revision) {
-            action("Skip for now") {
-                saveDraft { send(StudyCommand.SkipActivity(newId()), then = { send(StudyCommand.Continue(newId())) }) }
-            }
-        }
-    }
-
-    private fun reflection(
-        text: JsonNode,
-        progress: ActivityProgress,
-    ) {
-        content(text.path("prompt_md").asText())
-        val field = writingField("Optional reflection", progress.reflection.orEmpty())
-        action("Save reflection and continue") {
-            send(StudyCommand.RecordReflection(newId(), field.text.toString()), then = { send(StudyCommand.Continue(newId())) })
-        }
-        action("Continue without reflection") { send(StudyCommand.Continue(newId())) }
-    }
-
-    private fun next() {
-        action("Continue") { send(StudyCommand.Continue(newId())) }
-    }
-
-    private fun saveDraft(after: (() -> Unit)? = null) {
+    protected override fun saveDraft(after: (() -> Unit)?) {
         main.removeCallbacks(autosave)
         val view = current
         val field = editor
@@ -655,9 +174,9 @@ class StudyActivity : Activity() {
         }
     }
 
-    private fun send(
+    protected override fun send(
         command: StudyCommand,
-        then: (() -> Unit)? = null,
+        then: (() -> Unit)?,
     ) {
         val view = current ?: return
         work({ send(view, command) }) { saved ->
@@ -670,9 +189,9 @@ class StudyActivity : Activity() {
         }
     }
 
-    private fun <T> work(
+    protected override fun <T> work(
         operation: StudyWorkspace.() -> T,
-        failure: (Throwable) -> Unit = ::showError,
+        failure: (Throwable) -> Unit,
         success: (T) -> Unit,
     ) {
         if (busy) return
@@ -700,124 +219,6 @@ class StudyActivity : Activity() {
         }
     }
 
-    private fun screen(title: String) {
-        editor = null
-        status = null
-        val scroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(paper) }
-        column =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(24), dp(26), dp(24), dp(32))
-                setBackgroundColor(paper)
-            }
-        scroll.addView(
-            column,
-            android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.CENTER_HORIZONTAL,
-            ),
-        )
-        if (resources.displayMetrics.widthPixels > dp(760)) column.layoutParams.width = dp(760)
-        setContentView(scroll)
-        LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            val mark = TextView(this@StudyActivity).apply {
-                text = "A"; textSize = 20f
-                typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setTextColor(whitePaper); setBackgroundColor(deep)
-                layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
-            }
-            addView(mark)
-            addView(TextView(this@StudyActivity).apply {
-                text = "AXIORA"; textSize = 14f; letterSpacing = .12f
-                setTextColor(ink); setPadding(dp(12), 0, 0, 0)
-            })
-            setPadding(0, 0, 0, dp(22))
-            column.addView(this)
-        }
-        heading(title, 30f)
-        this.title = title
-    }
-
-    private fun heading(
-        value: String,
-        size: Float = 22f,
-    ) {
-        label(value, size).apply {
-            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.NORMAL)
-            setTextColor(ink)
-            setPadding(0, dp(12), 0, dp(12))
-            if (android.os.Build.VERSION.SDK_INT >= 28) isAccessibilityHeading = true
-        }
-    }
-
-    private fun label(
-        value: String,
-        size: Float = 17f,
-        selectable: Boolean = false,
-    ): TextView =
-        TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(if (size <= 14f) quietInk else ink)
-            setTextIsSelectable(selectable)
-            setPadding(0, dp(8), 0, dp(8))
-            column.addView(this)
-        }
-
-    private fun content(source: String) {
-        if (source.isBlank()) return
-        label("", selectable = true).setMathText(source)
-    }
-
-    private fun TextView.setMathText(source: String) {
-        val viewWidth =
-            width.takeIf { it > 0 } ?: (
-                minOf(resources.displayMetrics.widthPixels, dp(760)) - column.paddingLeft - column.paddingRight
-            )
-        text = renderMathText(source, font, textSize, viewWidth - compoundPaddingLeft - compoundPaddingRight)
-    }
-
-    private fun action(
-        title: String,
-        click: () -> Unit,
-    ): Button =
-        Button(this).apply {
-            text = title
-            isAllCaps = false
-            textSize = 16f
-            setTextColor(accent)
-            backgroundTintList = android.content.res.ColorStateList.valueOf(whitePaper)
-            setPadding(dp(16), dp(10), dp(16), dp(10))
-            minHeight = dp(48)
-            setOnClickListener { if (!busy) click() }
-            val params = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            params.bottomMargin = dp(8)
-            column.addView(this, params)
-        }
-
-    private fun writingField(
-        title: String,
-        value: String,
-    ): EditText =
-        EditText(this).apply {
-            hint = title
-            contentDescription = title
-            gravity = Gravity.TOP or Gravity.START
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 5
-            maxLines = 12
-            // Imported checkpoints can contain longer text than this editor allows for new input.
-            setText(value)
-            filters = arrayOf(android.text.InputFilter.LengthFilter(12_000))
-            column.addView(this, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density + 0.5f).toInt()
-
     private fun notice(
         title: String,
         message: String,
@@ -830,7 +231,7 @@ class StudyActivity : Activity() {
             .show()
     }
 
-    private fun showError(error: Throwable) {
+    protected override fun showError(error: Throwable) {
         if (error is LinkageError) android.util.Log.e("Axiora", "Android runtime incompatibility", error)
         val message =
             if (error is IllegalArgumentException || error is IllegalStateException) {
@@ -841,7 +242,7 @@ class StudyActivity : Activity() {
         notice("Action could not be completed", message)
     }
 
-    private fun confirm(
+    protected override fun confirm(
         title: String,
         message: String,
         action: String,
@@ -856,13 +257,13 @@ class StudyActivity : Activity() {
             .show()
     }
 
-    private fun pick(operation: Int) {
+    protected override fun pick(operation: Int) {
         val intent =
-            Intent(if (operation == EXPORT) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT)
+            Intent(if (operation == EXPORT_DOCUMENT_REQUEST) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
                 .putExtra(Intent.EXTRA_LOCAL_ONLY, true)
-                .setType(if (operation == EXPORT) "application/json" else "*/*")
-        if (operation == EXPORT) intent.putExtra(Intent.EXTRA_TITLE, "axiora-learner-backup.json")
+                .setType(if (operation == EXPORT_DOCUMENT_REQUEST) "application/json" else "*/*")
+        if (operation == EXPORT_DOCUMENT_REQUEST) intent.putExtra(Intent.EXTRA_TITLE, "axiora-learner-backup.json")
         try {
             @Suppress("DEPRECATION")
             startActivityForResult(intent, operation)
@@ -872,9 +273,6 @@ class StudyActivity : Activity() {
     }
 
     private companion object {
-        const val IMPORT = 11
-        const val EXPORT = 12
-        const val RESTORE = 13
         val worker = Executors.newSingleThreadExecutor()
         var sharedWorkspace: StudyWorkspace? = null
     }

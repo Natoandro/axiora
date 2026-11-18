@@ -18,7 +18,9 @@ trap 'rm -rf -- "$work"' EXIT
 "$tools/d8" --lib "$platform" --min-api 26 --output "$work" android-app/build/android-runtime/*.jar
 bash "$root/spikes/android-math/build.sh"
 unzip -q "$root/build/android-math-spike/android-math-spike.apk" 'assets/*' 'lib/*' -d "$work"
-"$tools/aapt2" compile -o "$work/resources.zip" "$root/android-app/src/main/res/drawable/ic_axiora.xml"
+"$tools/aapt2" compile -o "$work/resources.zip" \
+    "$root/android-app/src/main/res/drawable/ic_axiora.xml" \
+    "$root/android-app/src/main/res/drawable/ic_chevron_right.xml"
 "$tools/aapt2" link --debug-mode -I "$platform" --manifest android-app/src/main/AndroidManifest.xml \
     -A "$work/assets" -R "$work/resources.zip" -o "$work/unsigned.apk"
 (cd "$work" && "$tools/aapt" add unsigned.apk classes*.dex lib/*/*.so)
