@@ -24,6 +24,7 @@ internal abstract class StudyActivityUi : Activity() {
     protected val whitePaper = Color.rgb(254, 252, 246)
     protected val line = Color.rgb(212, 205, 193)
     protected val accent = Color.rgb(158, 42, 26)
+    private lateinit var footer: LinearLayout
     protected lateinit var column: LinearLayout
     protected var editor: EditText? = null
     protected var status: TextView? = null
@@ -37,6 +38,7 @@ internal abstract class StudyActivityUi : Activity() {
         title: String,
         selectedTab: String? = null,
         backLabel: String? = null,
+        showTitle: Boolean = true,
         onBack: () -> Unit = {},
     ) {
         editor = null
@@ -92,7 +94,14 @@ internal abstract class StudyActivityUi : Activity() {
                 column.addView(this, LinearLayout.LayoutParams(-2, -2))
             }
         }
-        heading(title, 30f)
+        if (showTitle) heading(title, 30f)
+        footer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(whitePaper)
+            setPadding(dp(24), dp(6), dp(24), 0)
+            visibility = View.GONE
+        }
+        root.addView(footer, LinearLayout.LayoutParams(-1, -2))
         if (selectedTab != null) {
             val navigation = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -230,6 +239,11 @@ internal abstract class StudyActivityUi : Activity() {
         column.addView(view)
     }
 
+    protected fun footerAction(title: String, click: () -> Unit): Button {
+        footer.visibility = View.VISIBLE
+        return primaryAction(title, footer, click)
+    }
+
     protected fun primaryAction(title: String, click: () -> Unit): Button = stylePrimary(action(title, click))
 
     protected fun primaryAction(title: String, parent: LinearLayout, click: () -> Unit): Button =
@@ -237,8 +251,11 @@ internal abstract class StudyActivityUi : Activity() {
 
     private fun stylePrimary(button: Button): Button = button.apply {
         setTextColor(whitePaper)
-        backgroundTintList = android.content.res.ColorStateList.valueOf(accent)
         cornerRadiusCompat()
+        backgroundTintList = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_enabled), intArrayOf(-android.R.attr.state_enabled)),
+            intArrayOf(accent, quietInk),
+        )
     }
 
     protected fun Button.cornerRadiusCompat() {
@@ -251,14 +268,16 @@ internal abstract class StudyActivityUi : Activity() {
     protected fun heading(
         value: String,
         size: Float = 22f,
-    ) {
-        label(value, size).apply {
+        parent: LinearLayout = column,
+        renderMath: Boolean = false,
+    ): TextView =
+        label(value, size, parent = parent).apply {
             typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.NORMAL)
             setTextColor(ink)
             setPadding(0, dp(12), 0, dp(12))
             if (android.os.Build.VERSION.SDK_INT >= 28) isAccessibilityHeading = true
+            if (renderMath) setMathText(value)
         }
-    }
 
     protected fun label(
         value: String,

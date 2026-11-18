@@ -45,7 +45,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
             is End -> "Unit complete"
             is Exposition -> view.unit.title
         }
-        screen(title, backLabel = "Save and leave") { saveDraft(::home) }
+        screen(title, backLabel = "Save and leave", showTitle = activity !is Choice) { saveDraft(::home) }
         val text = view.unit.activity(session.currentActivityId)
         if (session.status == SessionStatus.COMPLETED) {
             heading("Unit complete")
@@ -57,8 +57,9 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
             view.unit.text
                 .path("objectives")
                 .joinToString("\n") { it.path("description").asText() }
-        if (objectives.isNotBlank()) label(objectives)
-        if (activity is Choice || activity is Proof) label(view.unit.title, 14f)
+        val focusedTask = activity is Choice || activity is Proof
+        if (!focusedTask && objectives.isNotBlank()) label(objectives)
+        if (activity is Choice) label(view.unit.title, 14f)
         when (activity) {
             is Exposition -> {
                 content(text.path("content_md").asText())
@@ -82,13 +83,22 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
                 action("Finish unit") { send(StudyCommand.Continue(newId())) }
             }
         }
+        if (focusedTask && objectives.isNotBlank()) {
+            textAction("Learning objectives") {
+                AlertDialog.Builder(this)
+                    .setTitle("Learning objectives")
+                    .setMessage(objectives)
+                    .setPositiveButton("Close", null)
+                    .show()
+            }
+        }
     }
 
     protected fun choice(
         text: JsonNode,
         progress: ActivityProgress,
     ) {
-        content(text.path("prompt_md").asText())
+        heading(text.path("prompt_md").asText(), 30f, renderMath = true)
         label("Choose one answer", 14f)
         val options = RadioGroup(this)
         val ids = mutableMapOf<Int, String>()
@@ -111,13 +121,12 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
             heading(if (correct) "Correct · exact choice" else "Incorrect · exact choice")
             content(text.path("feedback").path(if (correct) "correct_md" else "incorrect_md").asText())
             if (attempt.sequence > 1) label("Retry · practice")
-            next()
-        }
-        val submit =
-            action(if (attempt == null) "Submit answer" else "Try again") {
+            footerAction("Continue") { send(StudyCommand.Continue(newId())) }
+        } else {
+            footerAction(if (attempt == null) "Submit answer" else "Try again") {
                 send(StudyCommand.SubmitChoice(newId()))
-            }
-        submit.isEnabled = progress.selectedOption != null && !progress.feedbackVisible
+            }.isEnabled = progress.selectedOption != null
+        }
         options.setOnCheckedChangeListener { _, id ->
             ids[id]?.let { send(StudyCommand.SelectChoice(newId(), it)) }
         }
@@ -131,7 +140,6 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
             comparison(text, progress)
             return
         }
-        heading("Proof prompt", 17f)
         content(text.path("prompt_md").asText())
         text
             .path("hints")
@@ -147,7 +155,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
                     "Solution opened: ${if (progress.assistance.solutionRevealed) "yes" else "no"}.",
             )
             if (!progress.assistance.solutionRevealed) {
-                action("Show model solution") { send(StudyCommand.RevealSolution(newId())) }
+                footerAction("Show model solution") { send(StudyCommand.RevealSolution(newId())) }
             }
             if (progress.assistance.solutionRevealed) {
                 heading("Model solution")
@@ -228,7 +236,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
                 addView(group)
             }
         }
-        primaryAction("Save self-review and continue") {
+        footerAction("Save self-review and continue") {
             send(StudyCommand.RecordRubric(newId(), marks.toMap()), then = { send(StudyCommand.Continue(newId())) })
         }
         action("Revise proof") { proofEditor(text, progress, true) }
@@ -312,7 +320,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
                 action("Show a hint") { saveDraft { send(StudyCommand.RevealHint(newId(), hint.path("id").asText())) } }
             }
         }
-        action(if (revision) "Compare revised proof" else "Compare with solution") {
+        footerAction(if (revision) "Compare revised proof" else "Compare with solution") {
             saveDraft {
                 send(StudyCommand.SubmitProof(newId()), then = { send(StudyCommand.RevealSolution(newId())) })
             }

@@ -76,9 +76,17 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
     protected fun libraryScreen(showInProgress: Boolean = false) {
         work({ library() }) { library ->
             current = null
-            screen("Library", "Library")
+            screen("Library", "Library", showTitle = false)
+            val intro = LinearLayout(this).apply {
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            column.addView(intro)
+            heading("Library", 30f, parent = intro).layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+            action("Import course", intro) { pick(IMPORT_DOCUMENT_REQUEST) }.apply {
+                layoutParams = LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) }
+                maxWidth = resources.displayMetrics.widthPixels / 2
+            }
             label("Browse courses installed on this device.", 15f)
-            primaryAction("Import course") { pick(IMPORT_DOCUMENT_REQUEST) }
             val search = EditText(this).apply {
                 hint = "Search courses"
                 contentDescription = "Search courses"
@@ -299,7 +307,7 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
             heading("Installed versions", 17f)
             label("$versions. You can start work on either revision. In-progress sessions stay pinned.")
         }
-        primaryAction("Import course") {
+        footerAction("Import course") {
             pendingImport = null
             work({ install(preview) }) { home() }
         }
