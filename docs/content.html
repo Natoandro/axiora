@@ -35,6 +35,29 @@
 <h2 id="contract-status">Contract status</h2>
 <p>This is the proposed <strong>Axiora content schema 0.1.0</strong>. It is a design contract with a JSON example and an illustrative fixture. A strict Kotlin parser and shared validator are implemented for the compiler and package reader; the contract is checked in code rather than a standalone JSON Schema. This work completes milestone M1.</p>
 <p>The example uses runtime JSON directly. A high-level YAML authoring language is deferred until several manually authored units reveal what abstraction actually helps. This reduces the risk of designing a language before learning what teaching needs to express.</p>
+<h2 id="proposed-course-descriptor-for-the-next-schema">Proposed course descriptor for the next schema</h2>
+<p>The package structure is <strong>Course → Section → Unit → Activity</strong>. Learners open a course in the Library and choose a unit from its outline. A course orders units and recommends starting points. A unit owns objectives and a resumable activity graph. Activities are local nodes within that graph. A <strong>section</strong> groups consecutive units in the course outline. Every course has at least one section. A single untitled section renders as a plain unit list. Sections have no identity or learner state.</p>
+<p>A package delivers one course descriptor alongside its unit and concept documents in the next schema. The package retains its immutable ID, version, and manifest hash. The course gains a stable namespaced ID, independent of the package ID, so the Library can recognize the same course across package revisions. A course descriptor is pinned by the package revision that contains it and needs no independent version in this format.</p>
+<p>The manifest refers to the course descriptor by path and includes it in the file inventory. The descriptor owns the course title, outline order, and suggested entry units. The manifest unit inventory resolves those references to exact unit versions and paths. Language, license, review claim, capabilities, and conventions remain package metadata. The package title and entry unit fields move into the descriptor in the new schema.</p>
+<p>Illustrative descriptor using the existing fixture's unit IDs:</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;axiora.ca.prime-and-maximal-ideals&quot;,
+  &quot;title&quot;: &quot;Prime and maximal ideals&quot;,
+  &quot;sections&quot;: [
+    {
+      &quot;title&quot;: null,
+      &quot;unit_ids&quot;: [
+        &quot;axiora.ca.ideal-prerequisites&quot;,
+        &quot;axiora.ca.prime-vs-maximal&quot;,
+        &quot;axiora.ca.maximal-implies-prime-proof&quot;
+      ]
+    }
+  ],
+  &quot;entry_units&quot;: [&quot;axiora.ca.ideal-prerequisites&quot;]
+}
+</code></pre>
+<p>The descriptor has a nonempty ordered <code>sections</code> array. Each section contains exactly <code>title</code> and a nonempty ordered <code>unit_ids</code> array. The title is either a nonempty string or, for a course with exactly one section, <code>null</code>. Sections cannot nest. Every unit in the manifest appears exactly once across the sections. Entry units are nonempty and unique, and each references a unit in the outline. Entry points are recommendations rather than prerequisites. Editing section titles or moving units in the outline does not change unit or activity identity. Authoring or importing multiple courses from one archive is deferred.</p>
+<p>A reader that supports both formats can present an existing schema 0.1 package as an implicit course, using the package ID as the legacy course identity, the manifest title as its title, the manifest unit order as one untitled section, and the manifest entry points as the course entry points. The old archive stays byte-for-byte intact. To continue an existing course's Library identity when an explicit descriptor first ships, the publisher should use the original package ID as the explicit course ID. A different ID gives the course a separate Library entry. Automatic merging across package IDs is deferred. Existing sessions, drafts, and attempts keep their exact package, unit, and activity references. A reader that only supports 0.1 rejects the new schema version.</p>
 <h2 id="names-and-identity">Names and identity</h2>
 <p>Use stable namespaced ASCII IDs, for example <code>axiora.ca.prime-vs-maximal</code>. IDs match <code>[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*</code> and are at most 120 characters. Renaming explanatory prose does not change an ID.</p>
 <p>Each package and unit has a three-part numeric version such as <code>0.1.0</code>; prerelease syntax and version ranges are not supported initially. A unit ID identifies an educational contract; its version identifies one revision. Content hashes identify exact bytes. These are different responsibilities.</p>
@@ -147,7 +170,7 @@ units/prime-vs-maximal.json
 <p>Version 0.1 concept relation targets must be present in the same package. External prerequisite IDs may appear in a unit's <code>requires_concepts</code>, where they are advisory learning dependencies. They do not authorize missing executable or rendering dependencies. The reader may browse a unit with an unmet learning prerequisite but must show the gap.</p>
 <p>Do not merge concepts solely by matching titles. Different ring conventions or theorem hypotheses can require distinct IDs or explicit assumptions. Version 0.1 prevents importing conflicting definitions under the same ID into one active course view; it does not attempt universal ontology reconciliation.</p>
 <h2 id="learning-unit-fields">Learning unit fields</h2>
-<p>All unit fields below are required. Units are independent compilation artifacts; collections are supplied by manifest entry points initially. A separate course/path document is deferred.</p>
+<p>All unit fields below are required. Units are independent compilation artifacts; collections are supplied by manifest entry points initially. Schema 0.1 has no separate course document. See the proposed descriptor above for the next schema.</p>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Scrollable reference table"><table>
 <thead>
 <tr>
@@ -245,6 +268,6 @@ units/prime-vs-maximal.json
   </main>
   <footer class="page-footer">A proposed learning platform. No application release yet.<br>Human and AI editions share the same source.</footer>
 </div>
-<aside class="page-outline" aria-label="On this page"><p>On this page</p><nav><a href="#contract-status">Contract status</a><a href="#names-and-identity">Names and identity</a><a href="#package-layout">Package layout</a><a href="#concepts-and-prerequisites">Concepts and prerequisites</a><a href="#learning-unit-fields">Learning unit fields</a><a href="#activity-vocabulary">Activity vocabulary</a><a href="#execution-semantics">Execution semantics</a><a href="#markdown-and-mathematics">Markdown and mathematics</a><a href="#update-compatibility">Update compatibility</a></nav></aside>
+<aside class="page-outline" aria-label="On this page"><p>On this page</p><nav><a href="#contract-status">Contract status</a><a href="#proposed-course-descriptor-for-the-next-schema">Proposed course descriptor for the next schema</a><a href="#names-and-identity">Names and identity</a><a href="#package-layout">Package layout</a><a href="#concepts-and-prerequisites">Concepts and prerequisites</a><a href="#learning-unit-fields">Learning unit fields</a><a href="#activity-vocabulary">Activity vocabulary</a><a href="#execution-semantics">Execution semantics</a><a href="#markdown-and-mathematics">Markdown and mathematics</a><a href="#update-compatibility">Update compatibility</a></nav></aside>
 </body>
 </html>

@@ -10,7 +10,7 @@ Use native Android navigation, accessibility, text selection, and lifecycle conv
 
 With no content installed, explain what a course package is and offer **Import course**. Do not show an empty dashboard full of invented metrics. An imported course shows its title, assumptions, prerequisites, version, and review claim.
 
-With work in progress, home prioritizes **Continue learning**, followed by due reviews and the course library. A course can be browsed by unit or concept. Notes and unfinished proof attempts remain reachable without restarting a lesson.
+With work in progress, home prioritizes **Continue learning**, followed by due reviews and the course library. Browse courses in Library and open a course to find its units. Long outlines can group units under section headings. A single untitled section appears as a plain unit list. Opening a unit resumes or begins its activity flow. Concepts can be browsed separately as a cross-reference. Notes and unfinished proof attempts remain reachable without restarting a lesson.
 
 Do not show a single mastery ring or a completion percentage as a proxy for understanding. Prefer concrete language: “Two independent recognition checks,” “Proof attempt awaiting comparison,” and “Review due today.”
 

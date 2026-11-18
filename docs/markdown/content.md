@@ -6,6 +6,38 @@ This is the proposed **Axiora content schema 0.1.0**. It is a design contract wi
 
 The example uses runtime JSON directly. A high-level YAML authoring language is deferred until several manually authored units reveal what abstraction actually helps. This reduces the risk of designing a language before learning what teaching needs to express.
 
+## Proposed course descriptor for the next schema
+
+The package structure is **Course → Section → Unit → Activity**. Learners open a course in the Library and choose a unit from its outline. A course orders units and recommends starting points. A unit owns objectives and a resumable activity graph. Activities are local nodes within that graph. A **section** groups consecutive units in the course outline. Every course has at least one section. A single untitled section renders as a plain unit list. Sections have no identity or learner state.
+
+A package delivers one course descriptor alongside its unit and concept documents in the next schema. The package retains its immutable ID, version, and manifest hash. The course gains a stable namespaced ID, independent of the package ID, so the Library can recognize the same course across package revisions. A course descriptor is pinned by the package revision that contains it and needs no independent version in this format.
+
+The manifest refers to the course descriptor by path and includes it in the file inventory. The descriptor owns the course title, outline order, and suggested entry units. The manifest unit inventory resolves those references to exact unit versions and paths. Language, license, review claim, capabilities, and conventions remain package metadata. The package title and entry unit fields move into the descriptor in the new schema.
+
+Illustrative descriptor using the existing fixture's unit IDs:
+
+```json
+{
+  "id": "axiora.ca.prime-and-maximal-ideals",
+  "title": "Prime and maximal ideals",
+  "sections": [
+    {
+      "title": null,
+      "unit_ids": [
+        "axiora.ca.ideal-prerequisites",
+        "axiora.ca.prime-vs-maximal",
+        "axiora.ca.maximal-implies-prime-proof"
+      ]
+    }
+  ],
+  "entry_units": ["axiora.ca.ideal-prerequisites"]
+}
+```
+
+The descriptor has a nonempty ordered `sections` array. Each section contains exactly `title` and a nonempty ordered `unit_ids` array. The title is either a nonempty string or, for a course with exactly one section, `null`. Sections cannot nest. Every unit in the manifest appears exactly once across the sections. Entry units are nonempty and unique, and each references a unit in the outline. Entry points are recommendations rather than prerequisites. Editing section titles or moving units in the outline does not change unit or activity identity. Authoring or importing multiple courses from one archive is deferred.
+
+A reader that supports both formats can present an existing schema 0.1 package as an implicit course, using the package ID as the legacy course identity, the manifest title as its title, the manifest unit order as one untitled section, and the manifest entry points as the course entry points. The old archive stays byte-for-byte intact. To continue an existing course's Library identity when an explicit descriptor first ships, the publisher should use the original package ID as the explicit course ID. A different ID gives the course a separate Library entry. Automatic merging across package IDs is deferred. Existing sessions, drafts, and attempts keep their exact package, unit, and activity references. A reader that only supports 0.1 rejects the new schema version.
+
 ## Names and identity
 
 Use stable namespaced ASCII IDs, for example `axiora.ca.prime-vs-maximal`. IDs match `[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*` and are at most 120 characters. Renaming explanatory prose does not change an ID.
@@ -82,7 +114,7 @@ Do not merge concepts solely by matching titles. Different ring conventions or t
 
 ## Learning unit fields
 
-All unit fields below are required. Units are independent compilation artifacts; collections are supplied by manifest entry points initially. A separate course/path document is deferred.
+All unit fields below are required. Units are independent compilation artifacts; collections are supplied by manifest entry points initially. Schema 0.1 has no separate course document. See the proposed descriptor above for the next schema.
 
 | Field | Meaning |
 | --- | --- |

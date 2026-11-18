@@ -161,3 +161,17 @@ These decisions establish the proposed design baseline dated 16 November 2026. �
 **Tradeoff:** This defers the Compose choice in ADR-004. Course prose currently uses native text with supplemental formula previews. The handoff tracks richer Markdown presentation, localizable UI strings and device accessibility separately. The UI choice changes no package or backup format.
 
 **Reopen when:** Device coverage or proof-workspace usability shows a concrete limitation of framework views. Keep the renderer data-only and preserve the exact revision and learner-record boundaries.
+
+## ADR-014 — Course outlines separate from package inventory
+
+**Status:** proposed for the next content schema. Schema 0.1 and its reader remain unchanged.
+
+**Problem:** The Library needs course identity and ordered units, with headings for longer outlines. The package manifest also has to describe an immutable archive and its exact payload, including unit revisions.
+
+**Decision:** Use Course → Section → Unit → Activity as the package structure. Deliver one explicit course descriptor per package. Require an ordered list of sections in each descriptor. A single untitled section displays as a plain unit list. Sections carry no learner identity or state. The manifest inventories exact revisions, and each unit owns its local activity graph.
+
+**Tradeoff:** Authors maintain both course order and archive inventory, so the compiler must validate agreement. One course per archive keeps installation and revision selection bounded while the first real course outlines are reviewed.
+
+**Compatibility:** Read schema 0.1 as an implicit course keyed by package ID, with all manifest units in one untitled section. An upgraded descriptor can preserve that Library identity by adopting the old package ID as its course ID. Preserve exact package and unit references in learner records.
+
+**Reopen when:** Reviewed content requires shared units across separately distributed courses, multiple courses shipped together, or semantic sections with their own objectives.
