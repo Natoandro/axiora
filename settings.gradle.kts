@@ -4,4 +4,5 @@ include(":content-model", ":content-validation", ":compiler-cli", ":learning-cor
 
 if (providers.gradleProperty("androidSdk").isPresent) {
     include(":android-storage")
+    include(":android-app")
 }

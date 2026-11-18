@@ -243,6 +243,26 @@ class SqliteLearnerStore(
         }
     }
 
+    fun sessionIds(): List<String> =
+        driver.read { connection ->
+            connection.query("SELECT session_id FROM learner_session ORDER BY rowid DESC").use { rows ->
+                buildList { while (rows.next()) add(rows.getString(1)) }
+            }
+        }
+
+    fun submissionOrder(): List<String> =
+        driver.read { connection ->
+            connection
+                .query(
+                    """SELECT attempt.attempt_id FROM learning_event JOIN attempt
+                   ON attempt.command_id = learning_event.command_id
+                   WHERE learning_event.event_type IN ('choice_submitted', 'proof_submitted')
+                   ORDER BY learning_event.sequence""",
+                ).use { rows ->
+                    buildList { while (rows.next()) add(rows.getString(1)) }
+                }
+        }
+
     fun loadSession(sessionId: String): StoredSession? =
         driver.read { connection ->
             connection

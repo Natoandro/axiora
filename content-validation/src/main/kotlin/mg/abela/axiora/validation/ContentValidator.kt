@@ -1,5 +1,7 @@
 package mg.abela.axiora.validation
 
+import mg.abela.axiora.content.LearningUnit
+import mg.abela.axiora.content.StableId
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -99,7 +101,8 @@ internal fun ValidationContext.validate(directory: Path): ValidationResult {
                     Files.isRegularFile(it) && it != root.resolve("manifest.json") &&
                         it != root.resolve("README.md")
                 }.map { root.relativize(it).toString().replace('\\', '/') }
-                .toList()
+                .iterator()
+                .asSequence()
                 .toSet()
         }
     (actualJson - declared).forEach { error("AXC203", it, "$", "File is not declared in manifest inventory.") }
@@ -108,6 +111,7 @@ internal fun ValidationContext.validate(directory: Path): ValidationResult {
     val concepts = linkedMapOf<String, List<Pair<String, String>>>()
     conceptPaths.forEach { path -> read(root, path, 2_097_152)?.let { concepts.putAll(parseConcepts(it, path)) } }
     validatePrerequisiteGraph(concepts)
+    val units = mutableListOf<LearningUnit>()
     val unitIds = mutableSetOf<String>()
     val usedCapabilities = mutableSetOf<String>()
     unitRecords.forEach { rec ->
@@ -119,7 +123,18 @@ internal fun ValidationContext.validate(directory: Path): ValidationResult {
             ) {
                 error("AXC203", rec.path, "$.id", "Unit identity does not match its manifest record.")
             }
-            validateUnit(parsed.third, rec.path, concepts.keys, usedCapabilities)
+            val data = parsed.third
+            validateUnit(data, rec.path, concepts.keys, usedCapabilities)
+            units +=
+                LearningUnit(
+                    rec.id,
+                    rec.version,
+                    data.conceptIds.map(::StableId).toSet(),
+                    data.objectives,
+                    data.sources,
+                    data.entry,
+                    data.activities,
+                )
         }
     }
     if (unitIds.isNotEmpty() &&
@@ -153,5 +168,5 @@ internal fun ValidationContext.validate(directory: Path): ValidationResult {
             if (hash != f.sha256) error("AXC103", f.path, "$", "SHA-256 does not match the manifest.")
         }
     }
-    return ValidationResult(diagnostics.toList())
+    return ValidationResult(diagnostics.toList(), if (diagnostics.isEmpty()) units else emptyList())
 }

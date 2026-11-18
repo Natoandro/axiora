@@ -92,7 +92,7 @@ for abi in "${abis[@]}"; do
 done
 
 javac --release 8 -encoding UTF-8 -classpath "$platform" -d "$work/classes" \
-    MathActivity.java MathCanvas.java
+    MathActivity.java renderer/mg/abela/axiora/mathspike/MathCanvas.java
 jar cf "$work/classes.jar" -C "$work/classes" .
 "$tools/d8" --lib "$platform" --min-api "$min_api" --output "$work" "$work/classes.jar"
 "$tools/aapt2" link -I "$platform" --manifest AndroidManifest.xml \

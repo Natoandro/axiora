@@ -1,6 +1,6 @@
 # Implementation status
 
-This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. Phase 5 has started with an Android renderer prototype. M3 remains open and course review remains pending.
+This record tracks verified work against [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Design contracts in `docs/markdown/` remain authoritative. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. Phase 5 has an installable Android vertical slice. M3 remains open for device acceptance and course review remains pending.
 
 ## Phase 1 — complete
 
@@ -78,4 +78,22 @@ An initial API 30 x86 probe ran the schema and representative write statements t
 
 The [Android SQLite driver](android-storage/README.md) now runs the shared learner store, schema, migrations, and backup codec through framework SQLite. The signed storage probe passed on the API 30 x86 emulator. It committed a draft, terminated its own process after writing a second draft inside an open transaction, and verified recovery in a new process after an explicit force-stop. It checked durable command replay and retry, actual foreign-key rejection, schema-1 record migration, and backup restore on Android. JDBC restored the Android-produced backup, exported identical bytes, and replayed the saved command. The offline JVM tests and Kotlin lint passed with the Android storage module enabled.
 
-API 26 execution, Android cursor-window behavior for large records, study-app lifecycle and UI behavior, and the full M3 device gate remain pending.
+That probe did not exercise the study application. See the app-level checks below.
+
+### Android study application
+
+The [study app and reproducible demo](android-app/README.md) build a signed debug APK with a declared API 26 minimum and x86, x86_64, and ARM64 renderers. The app uses the shared package reader, engine, framework SQLite driver and Texlet Canvas adapter. It provides import preview, revision selection, branching study, proof autosave and self-review, study history and notes, due reviews, and document-picker backup and restore. There is no account setup, internet permission, WebView, remote asset loading, or automatic Android backup. The app uses framework views in the vertical slice under [ADR-013](docs/markdown/decisions.md#adr-013--framework-views-and-texlet-for-the-android-vertical-slice).
+
+**Verified on a Pixel 3a API 30 x86 emulator:** The signed APK installed and opened in airplane mode with Wi-Fi off. Initial checks used a temporary instrumentation harness after injected taps on picker rows did not select files. A follow-up run used keyboard focus to select the original package in the system picker and reinstalled it through the app. The application presented the course preview, installed the validated archive, accepted an exact-choice submission, displayed native formula previews alongside selectable source, and saved a proof draft. An explicit `am force-stop` removed the running process. A cold launch in a new process reopened the same session and displayed the committed draft and saved indicator. This covers the force-stop and reopen portion of D01.
+
+In a separate run, an incorrect first choice followed by a correct retry still entered remediation (L01). Skipping the proof allowed the unit to finish (L03). Removing the original demo revision from the active library preserved the saved note and readable attempt history (D03).
+
+Using the same offline setup, the test installed version 0.2.1 and reopened a version 0.2.0 session with its original draft (D02). It opened a hint, compared the proof, marked a rubric item, and finished the unit with the proof labeled unassessed self-review. Advancing the emulator to the next local date exposed the polynomial quotient check under **Due review**. The learner submitted the fresh answer successfully and the emulator clock was restored (R01). The installed build exported JSON through the system picker. Backup restore ran in both a separate empty app sandbox and the populated sandbox. The follow-up repeated both restores through normal picker selection while airplane mode was on and Wi-Fi was off. The empty restore reported both missing revisions, displayed the earlier proof in history, and let the learner resume the pinned fresh check after reimport. The populated restore refused the file (B01 and the nonempty-profile portion of B02).
+
+**Automated checks:** JVM tests and Kotlin lint passed with both Android modules enabled. The focused shared checks cover review entry validation and durable submission order across command replay. The Rust workspace and Tier 1 font test passed. The handbook build and link/content checks passed.
+
+**Known limits:** Full Markdown formatting, localizable Android strings, and proof reminder controls are pending. The app displays course Markdown as readable source with supplemental native formula previews. Large record reads near Android cursor-window limits are still unverified.
+
+**Display checks on the API 30 emulator:** At 320 dp and 2.0 font scale, Tab focused **Continue learning** and the learner could reach the question, formula previews, remediation and proof save action by scrolling. At an 800 dp emulated width, the proof editor and save actions remained available. This checks both layout widths on the phone emulator. It provides partial A01 evidence.
+
+**Exit gate:** M3 remains open. The API 30 emulator covered the core offline flows, including system document selection by keyboard. Full TalkBack and keyboard traversal, API 26, and representative ARM64 and tablet device checks remain open.

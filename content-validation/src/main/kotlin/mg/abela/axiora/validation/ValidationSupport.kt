@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.core.StreamReadFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import mg.abela.axiora.content.LearningUnit
 import mg.abela.axiora.content.Revision
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
@@ -22,6 +23,7 @@ data class Diagnostic(
 
 data class ValidationResult(
     val diagnostics: List<Diagnostic>,
+    val units: List<LearningUnit> = emptyList(),
 ) {
     val valid get() = diagnostics.none { it.severity == "error" }
 }

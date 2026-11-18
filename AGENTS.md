@@ -2,7 +2,7 @@
 
 ## Scope and current truth
 
-This repository contains design documentation, a generated static HTML handbook, illustrative content, documentation tooling, and Kotlin/JVM content validation, packaging, study-engine, and durable-storage modules. It does **not** contain an Android app or a reviewed production course. Consult IMPLEMENTATION_STATUS.md for verified scope. Never report proposed behavior as implemented.
+This repository contains design documentation, a generated static HTML handbook, illustrative content, documentation tooling, Kotlin/JVM modules, and an Android study app under device verification. The production course is still awaiting review. Consult IMPLEMENTATION_STATUS.md for verified scope. Never report proposed behavior as implemented.
 
 The owner authorized independent product and architecture decisions for this design. Continue ordinary reversible work without repeatedly asking for permission. Ask about material ambiguity that changes the task, publication, credentials, licensing, or destructive operations. Do not deploy, publish, contact people, or connect external services without authorization.
 

@@ -26,7 +26,7 @@ Optional future AI adapters sit outside these core boundaries. They may propose 
 
 ## Proposed module structure
 
-These are intended boundaries. The content, validation, compiler, learning-core, and initial JVM storage modules exist. The Android application does not yet exist.
+The content, validation, compiler, learning-core, and storage modules serve the Android vertical slice. The [implementation status](../../IMPLEMENTATION_STATUS.md) records device coverage.
 
 | Module | Responsibility | Must not depend on |
 | --- | --- | --- |

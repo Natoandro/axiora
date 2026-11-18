@@ -29,6 +29,14 @@ class StudyEngineTest {
             IdSource { "id-${++id}" },
         )
 
+    @Test fun `fresh check starts at its evidence-bearing choice on the pinned revision`() {
+        val review = engine.startSession("review", revision, "question").getOrThrow()
+        assertEquals("question", review.currentActivityId)
+        assertEquals(revision, review.revision)
+        assertEquals("question", review.events.single().activityId)
+        assertEquals(true, engine.startSession("invalid", revision, "remediation").isFailure)
+    }
+
     @Test fun `wrong choice retry keeps first branch and both attempts`() {
         var session = engine.startSession("s1", revision).getOrThrow()
         session = accepted(session, StudyCommand.Continue("continue-intro"))

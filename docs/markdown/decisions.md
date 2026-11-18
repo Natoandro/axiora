@@ -136,7 +136,7 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 
 ## ADR-012 â€” Relational learner records and durable command receipts
 
-**Status:** adopted for the JVM learner repository. Phase 5 also implements a framework SQLite driver. Android application integration remains pending.
+**Status:** adopted for the JVM learner repository. Phase 5 also implements a framework SQLite driver. The Android vertical slice uses this driver. Device acceptance remains open.
 
 **Problem:** The headless engine can produce a new checkpoint, attempts, and events, but process restart currently loses them and replaying a command can apply it twice.
 
@@ -149,3 +149,15 @@ These decisions establish the proposed design baseline dated 16 November 2026. â
 **Tradeoff:** Result and checkpoint payload encoding remain application responsibilities. Android cursor window limits can affect large records even when SQLite accepts their writes. Validate the supported record sizes and the minimum Android version before app acceptance.
 
 **Reopen when:** Android compatibility or migration evidence requires a different driver or schema. Keep durable command identity, atomic primary-record writes, and immutable package identity across any replacement.
+
+## ADR-013 â€” Framework views and Texlet for the Android vertical slice
+
+**Status:** implemented in the local debug build. See the [device evidence](../../IMPLEMENTATION_STATUS.md#phase-5--android-rendering-and-storage-compatibility) for the acceptance gate.
+
+**Problem:** Exercise the offline learning loop on the existing SDK and device setup with minimal additional dependencies.
+
+**Decision:** Build the vertical slice with framework Android views, framework SQLite and the system document picker. Share the existing Kotlin modules and the native Texlet Canvas adapter. Advertise API 26 as the minimum candidate and compile against API 33. Keep selectable content source available even when a formula cannot be drawn or fits only as source.
+
+**Tradeoff:** This defers the Compose choice in ADR-004. Course prose currently uses native text with supplemental formula previews. The handoff tracks richer Markdown presentation, localizable UI strings and device accessibility separately. The UI choice changes no package or backup format.
+
+**Reopen when:** Device coverage or proof-workspace usability shows a concrete limitation of framework views. Keep the renderer data-only and preserve the exact revision and learner-record boundaries.

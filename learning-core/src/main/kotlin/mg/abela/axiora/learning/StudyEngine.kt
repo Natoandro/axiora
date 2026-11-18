@@ -229,14 +229,24 @@ class StudyEngine(
     fun startSession(
         sessionId: String,
         revision: UnitRevisionRef,
+    ): Result<StudySession> = startSession(sessionId, revision, null)
+
+    fun startSession(
+        sessionId: String,
+        revision: UnitRevisionRef,
+        reviewActivity: String?,
     ): Result<StudySession> {
         val unit = unitLookup.find(revision) ?: return Result.failure(IllegalArgumentException("Unit revision is unavailable."))
         if (unit.id != revision.unitId || unit.version != revision.unitVersion) {
             return Result.failure(IllegalArgumentException("Resolved unit does not match the pinned revision."))
         }
+        val entry = reviewActivity ?: unit.entry
+        if (reviewActivity != null && (unit.activities[reviewActivity] as? Choice)?.evidence == null) {
+            return Result.failure(IllegalArgumentException("A review must start at an evidence-bearing choice."))
+        }
         val startedAt = time.now()
-        val event = LearningEvent(ids.next(), "start:$sessionId", sessionId, revision, EventType.SESSION_STARTED, startedAt, unit.entry)
-        return Result.success(StudySession(sessionId, revision, unit, SessionStatus.ACTIVE, unit.entry, events = listOf(event)))
+        val event = LearningEvent(ids.next(), "start:$sessionId", sessionId, revision, EventType.SESSION_STARTED, startedAt, entry)
+        return Result.success(StudySession(sessionId, revision, unit, SessionStatus.ACTIVE, entry, events = listOf(event)))
     }
 
     fun handle(
@@ -308,7 +318,7 @@ class StudyEngine(
                 AssessmentMethod.EXACT_CHOICE,
                 progress.assistance,
                 submittedAt,
-                LocalDate.ofInstant(submittedAt, offset),
+                submittedAt.atOffset(offset).toLocalDate(),
                 offset,
             )
         val updated =
@@ -386,11 +396,22 @@ class StudyEngine(
                 AssessmentMethod.SELF_REVIEW,
                 progress.assistance,
                 submittedAt,
-                LocalDate.ofInstant(submittedAt, offset),
+                submittedAt.atOffset(offset).toLocalDate(),
                 offset,
             )
-        val next = progress.copy(attempts = progress.attempts + attempt, proofSubmitted = true, readyToContinue = false)
-        return accept(session, command, next, EventType.PROOF_SUBMITTED, mapOf("outcome" to AttemptOutcome.UNASSESSED.name), attempt)
+        val next =
+            progress.copy(
+                attempts = progress.attempts + attempt,
+                proofSubmitted = true,
+                rubric = emptyMap(),
+                readyToContinue = false,
+            )
+        val payload =
+            buildMap {
+                put("outcome", AttemptOutcome.UNASSESSED.name)
+                progress.attempts.lastOrNull()?.let { put("revises_attempt_id", it.id) }
+            }
+        return accept(session, command, next, EventType.PROOF_SUBMITTED, payload, attempt)
     }
 
     private fun recordRubric(

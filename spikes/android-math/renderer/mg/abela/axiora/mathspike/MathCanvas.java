@@ -10,14 +10,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-final class MathCanvas extends View {
+public final class MathCanvas extends View {
     static {
         System.loadLibrary("texlet_canvas");
     }
 
     private static native float[] nativeLayout(byte[] font, byte[] source, float textSize, boolean display);
 
-    static MathCanvas create(Context context, byte[] font, String source, boolean display) {
+    public static MathCanvas create(Context context, byte[] font, String source, boolean display) {
         float size = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP, 22, context.getResources().getDisplayMetrics());
         float[] commands = nativeLayout(font, source.getBytes(StandardCharsets.UTF_8), size, display);
@@ -81,6 +81,10 @@ final class MathCanvas extends View {
             }
         }
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+    }
+
+    public int formulaWidth() {
+        return width;
     }
 
     @Override

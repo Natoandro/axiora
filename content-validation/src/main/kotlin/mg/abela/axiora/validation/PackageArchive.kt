@@ -204,7 +204,13 @@ class PackageArchiveWriter(
 class PackageArchiveReader(
     private val validator: ContentValidator = ContentValidator(),
 ) {
-    fun inspect(archive: Path): PackageRevisionDescriptor {
+    fun inspect(archive: Path): PackageRevisionDescriptor = load(archive) { descriptor, _, _ -> descriptor }
+
+    /** Staging exists only while the callback runs, after all archive validation succeeds. */
+    fun <T> load(
+        archive: Path,
+        consume: (PackageRevisionDescriptor, Path, ValidationResult) -> T,
+    ): T {
         require(Files.isRegularFile(archive) && !Files.isSymbolicLink(archive)) { "Archive is not a regular file." }
         val archiveSize = Files.size(archive)
         require(archiveSize <= PackageLimits.ARCHIVE_BYTES) { "Archive exceeds ${PackageLimits.ARCHIVE_BYTES} bytes." }
@@ -278,14 +284,16 @@ class PackageArchiveReader(
             declaredPayloads.forEach { path ->
                 parseBoundedJson(Files.readAllBytes(staging.resolve(path)), path, mapper)
             }
-            return PackageRevisionDescriptor(
-                tree.path("package_id").asText(),
-                tree.path("version").asText(),
-                sha256(manifest),
-                sha256(Files.readAllBytes(archive)),
-                names.size - 1,
-                total,
-            )
+            val descriptor =
+                PackageRevisionDescriptor(
+                    tree.path("package_id").asText(),
+                    tree.path("version").asText(),
+                    sha256(manifest),
+                    sha256(Files.readAllBytes(archive)),
+                    names.size - 1,
+                    total,
+                )
+            return consume(descriptor, staging, result)
         } finally {
             Files.walk(staging).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) }
         }

@@ -1,6 +1,6 @@
 # Axiora implementation plan
 
-**Status:** active execution plan · 17 November 2026. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. Android/device validation remains Phase 5 and keeps M3 open. See the [implementation status record](IMPLEMENTATION_STATUS.md).
+**Status:** active execution plan · 17 November 2026. Phases 1–4 are complete at the JVM layer; M1 and M2 are closed. The Android vertical slice builds locally. Phase 5 device acceptance keeps M3 open. See the [implementation status record](IMPLEMENTATION_STATUS.md).
 
 This plan turns the [delivery milestones](docs/markdown/delivery.md) into reviewable work. The detailed [content contract](docs/markdown/content.md), [learner-state contract](docs/markdown/learner-state.md), and [decision log](docs/markdown/decisions.md) remain authoritative. A phase is complete only when its observable exit criteria pass; creating directories or screens is insufficient.
 
@@ -200,4 +200,4 @@ Work in this order:
 
 ## Next concrete change
 
-Begin Phase 5 with the mathematical-rendering and accessibility spike. Select and verify the Android SQLite adapter and lifecycle integration before building the complete UI. Keep M3 open until the recorded device acceptance gate passes. Do not describe hashes as authenticated authorship.
+Use the [Android demo](android-app/README.md) and the [implementation status record](IMPLEMENTATION_STATUS.md#phase-5--android-rendering-and-storage-compatibility) to finish Phase 5 device acceptance. Keep M3 open until the recorded device acceptance gate passes. Do not describe hashes as authenticated authorship.

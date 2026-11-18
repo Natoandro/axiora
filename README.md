@@ -4,7 +4,7 @@ An offline mathematics learning environment for developing independent reasoning
 
 Axiora combines guided study, examples and counterexamples, proof practice, and deliberate review. Its core works without an account, network connection, or language model. AI may help authors prepare content and may eventually offer optional tutoring; it does not certify mathematical correctness.
 
-**Project status: partial implementation.** Phases 1–4 passed their JVM acceptance gates for content validation, packaging, study, and durable learner records. Phase 5 has an Android math spike and a [framework SQLite driver](android-storage/README.md) verified on an API 30 emulator. The Android study app and AI integration remain future work. See the [implementation record](IMPLEMENTATION_STATUS.md) for verified scope.
+**Project status: partial implementation.** Phases 1–4 passed their JVM acceptance gates for content validation, packaging, study, and durable learner records. Phase 5 has an installable [Android study app](android-app/README.md) and an open device acceptance gate. AI integration remains future work. See the [implementation record](IMPLEMENTATION_STATUS.md) for verified scope.
 
 ## Read the design
 
@@ -64,7 +64,7 @@ Install a local pre-commit hook that checks staged Kotlin files by running this 
 ./gradlew addKtlintCheckGitPreCommitHook
 ```
 
-Validation and packaging read the unpacked fixture without rewriting it. Packaging writes the `.axp` archive and an adjacent `.report.json`; use `--overwrite` to replace an existing archive. The Android app remains a future phase.
+Validation and packaging read the unpacked fixture without rewriting it. Packaging writes the `.axp` archive and an adjacent `.report.json`; use `--overwrite` to replace an existing archive. Build and run the Android app separately using the [local demo instructions](android-app/README.md).
 
 `check_docs.py` checks local Markdown/HTML links and fragments, the example's file hashes and documented semantic invariants. It is a documentation check, not a production package validator or mathematical proof checker.
 
@@ -83,7 +83,7 @@ Quote each expression separately. The script finds Latin Modern Math through Fon
 
 One manually authored course slice teaches the distinction between prime and maximal ideals. A learner can import it, work through a branching lesson, write and resume a proof, compare it with a rubric, and return for review, all offline. The first implementation should prove that complete loop before adding automatic textbook ingestion or open-ended AI grading.
 
-Proposed implementation: Kotlin domain libraries, a native Android client using Jetpack Compose and SQLite, and a JVM command-line content compiler. These are documented decisions; no application scaffolding or dependency versions have been selected yet.
+The prototype shares Kotlin domain libraries between a native Android client with SQLite and the JVM command-line content compiler.
 
 ## Contributions and ownership
 
