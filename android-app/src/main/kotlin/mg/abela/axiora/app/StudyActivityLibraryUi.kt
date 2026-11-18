@@ -208,8 +208,7 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
     }
 
     protected fun course(course: Course) {
-        screen(course.title)
-            action("‹  Library", ::libraryScreen)
+        screen(course.title, backLabel = "Library") { libraryScreen() }
         label("A focused course for independent mathematical reasoning.", 15f)
         label("Version ${course.descriptor.version} · Review claim: ${course.review}")
         content(course.conventions)
@@ -284,8 +283,7 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
         val course = preview.course
         val prerequisites = course.units.flatMap { it.text.path("requires_concepts").map { item -> item.asText() } }.distinct()
         val versions = preview.existing.filter { it.active }.joinToString { it.packageVersion }
-        screen("Import course")
-        action("‹  Library") {
+        screen("Import course", backLabel = "Library") {
             pendingImport = null
             work({ discard(preview) }) { libraryScreen() }
         }
@@ -313,8 +311,7 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
 
     protected fun history(entry: SessionEntry) {
         work({ store.attemptHistory(entry.id) }) { attempts ->
-            screen(entry.title)
-            action("Library", ::home)
+            screen(entry.title, backLabel = "Home", onBack = ::home)
             if (entry.status == SessionStatus.ACTIVE || entry.status == SessionStatus.PAUSED) {
                 action("Continue existing work") { work({ resume(entry.id) }, success = ::showStudy) }
             }
@@ -336,8 +333,7 @@ internal abstract class StudyActivityLibraryUi : StudyActivityUi() {
 
     protected fun notes(anchor: String? = null) {
         work({ store.notes(anchor) }) { notes ->
-            screen("Notes")
-            action("Library", ::home)
+            screen("Notes", backLabel = "Home", onBack = ::home)
             if (notes.isEmpty()) label("No notes yet.")
             notes.forEach { note ->
                 heading(note.contentId)

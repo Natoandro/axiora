@@ -57,12 +57,8 @@ small, .meta { font-size: .8125rem; color: var(--quiet); }
 .mark {
   inline-size: 1.6rem;
   block-size: 1.6rem;
-  display: grid;
-  place-items: center;
-  color: var(--mark-ink);
   background: var(--deep);
   border-radius: .4rem;
-  font: 1rem/1 var(--serif);
 }
 .prototype { margin-inline-start: auto; }
 .back {

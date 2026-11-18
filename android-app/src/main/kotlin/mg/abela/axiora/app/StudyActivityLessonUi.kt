@@ -45,8 +45,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
             is End -> "Unit complete"
             is Exposition -> view.unit.title
         }
-        screen(title)
-        action("‹  Save and leave") { saveDraft(::home) }
+        screen(title, backLabel = "Save and leave") { saveDraft(::home) }
         val text = view.unit.activity(session.currentActivityId)
         if (session.status == SessionStatus.COMPLETED) {
             heading("Unit complete")
@@ -194,8 +193,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
         text: JsonNode,
         progress: ActivityProgress,
     ) {
-        screen("Compare your proof")
-        action("‹  Proof workspace") { proofEditor(text, progress, true) }
+        screen("Compare your proof", backLabel = "Proof workspace") { proofEditor(text, progress, true) }
         label(current?.unit?.title.orEmpty(), 14f)
         card {
             heading("Your submitted proof", 18f)
@@ -242,8 +240,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
         revision: Boolean,
     ) {
         if (revision) {
-            screen("Revise proof")
-            action("Save and leave") { saveDraft(::home) }
+            screen("Revise proof", backLabel = "Save and leave") { saveDraft(::home) }
             content(text.path("prompt_md").asText())
         }
         label("Your proof remains saved on this device. Self review does not certify correctness.", 14f)

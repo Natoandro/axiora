@@ -24,7 +24,6 @@ internal abstract class StudyActivityUi : Activity() {
     protected val whitePaper = Color.rgb(254, 252, 246)
     protected val line = Color.rgb(212, 205, 193)
     protected val accent = Color.rgb(158, 42, 26)
-    protected val deep = Color.rgb(37, 35, 33)
     protected lateinit var column: LinearLayout
     protected var editor: EditText? = null
     protected var status: TextView? = null
@@ -34,7 +33,12 @@ internal abstract class StudyActivityUi : Activity() {
     protected abstract fun navigateLibrary()
     protected abstract fun navigateReview()
 
-    protected fun screen(title: String, selectedTab: String? = null) {
+    protected fun screen(
+        title: String,
+        selectedTab: String? = null,
+        backLabel: String? = null,
+        onBack: () -> Unit = {},
+    ) {
         editor = null
         status = null
         val root = LinearLayout(this).apply {
@@ -59,28 +63,34 @@ internal abstract class StudyActivityUi : Activity() {
         if (resources.displayMetrics.widthPixels > dp(760)) column.layoutParams.width = dp(760)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
-        LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            val mark = TextView(this@StudyActivityUi).apply {
-                text = "A"; textSize = 20f
-                typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setTextColor(whitePaper); setBackgroundColor(deep)
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    setColor(deep)
-                    cornerRadius = dp(7).toFloat()
-                }
-                layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+        if (selectedTab != null) {
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(ImageView(this@StudyActivityUi).apply {
+                    setImageResource(resources.getIdentifier("ic_axiora", "drawable", packageName))
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(dp(38), dp(38)))
+                addView(TextView(this@StudyActivityUi).apply {
+                    text = "Axiora"; textSize = 21f; letterSpacing = -.03f
+                    typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
+                    setTextColor(ink); setPadding(dp(12), 0, 0, 0)
+                })
+                setPadding(0, 0, 0, dp(22))
+                column.addView(this)
             }
-            addView(mark)
-            addView(TextView(this@StudyActivityUi).apply {
-                text = "Axiora"; textSize = 21f; letterSpacing = -.03f
-                typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
-                setTextColor(ink); setPadding(dp(12), 0, 0, 0)
-            })
-            setPadding(0, 0, 0, dp(22))
-            column.addView(this)
+        } else if (backLabel != null) {
+            Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                isAllCaps = false
+                textSize = 16f
+                setTextColor(accent)
+                setPadding(dp(12), 0, dp(12), 0)
+                minHeight = dp(48)
+                text = "‹  $backLabel"
+                contentDescription = backLabel
+                setOnClickListener { if (!uiBusy) onBack() }
+                column.addView(this, LinearLayout.LayoutParams(-2, -2))
+            }
         }
         heading(title, 30f)
         if (selectedTab != null) {
