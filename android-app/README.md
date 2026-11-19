@@ -1,6 +1,6 @@
 # Axiora Android study app
 
-This local debug APK uses a Rust JNI package reader for archive inspection, loading, and stored-revision verification. Kotlin still builds the typed content models and repeats validation during this transition; installation, learner records, study behavior, and backup remain in Kotlin. The app uses native Android views, the system document picker, the framework SQLite driver, and the shared Texlet Canvas renderer. The manifest declares no internet or shared-storage permissions, and Android automatic backup is disabled. Learner backup and restore are explicit document-picker operations.
+This APK uses a Rust JNI package reader for archive inspection, loading, and stored-revision verification. Kotlin still builds the typed content models and repeats validation during this transition; installation, learner records, study behavior, and backup remain in Kotlin. The app uses native Android views, the system document picker, the framework SQLite driver, and the shared Texlet Canvas renderer. The manifest declares no internet or shared-storage permissions, and Android automatic backup is disabled. Learner backup and restore are explicit document-picker operations.
 
 ## Build and install
 
@@ -14,6 +14,22 @@ python3 android-app/prepare-demo.py
 adb install -r build/android-app/axiora.apk
 adb push build/android-demo/axiora-study-demo.axp build/android-demo/axiora-study-update.axp /sdcard/Download/
 ```
+
+The default command builds a locally debug-signed APK. Both JNI libraries are compiled by Cargo with `--release` in either mode. To build a locally signed release APK, create a private upload keystore and keep it outside the repository:
+
+```sh
+keytool -genkeypair -v -keystore "$HOME/.keys/axiora-release.p12" -storetype PKCS12 \
+  -keyalg RSA -keysize 3072 -validity 10000 -alias axiora
+export AXIORA_RELEASE_KEYSTORE="$HOME/.keys/axiora-release.p12"
+export AXIORA_RELEASE_KEY_ALIAS=axiora
+read -rsp 'Keystore password: ' AXIORA_RELEASE_STORE_PASSWORD; echo
+export AXIORA_RELEASE_STORE_PASSWORD
+read -rsp 'Key password: ' AXIORA_RELEASE_KEY_PASSWORD; echo
+export AXIORA_RELEASE_KEY_PASSWORD
+bash android-app/build.sh --release
+```
+
+The artifact is `build/android-app/axiora-release.apk`. Keep the keystore and passwords backed up securely: future APK updates must use the same signing identity. This local release build uses the same app version metadata as the debug build; versioning and store distribution setup remain separate work.
 
 The minimum declared version is Android 8.0 (API 26). The debug-signed build includes x86, x86_64, and ARM64 libraries. The Kotlin CLI remains the production CLI; Rust CLI host distribution and the full validator cutover are still in progress. See the [verification record](../IMPLEMENTATION_STATUS.md#phase-5--android-rendering-and-storage-compatibility) for tested devices and open checks. The debug signature is for local installation.
 
