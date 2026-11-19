@@ -382,5 +382,5 @@ use concepts::{parse_concept_document, validate_concept_relations};
 use units::validate_unit;
 
 #[cfg(test)]
-#[path = "validation_tests.rs"]
+#[path = "tests.rs"]
 mod tests;
