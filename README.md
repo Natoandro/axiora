@@ -68,6 +68,10 @@ Validation and packaging read the unpacked fixture without rewriting it. Packagi
 
 `check_docs.py` checks local Markdown/HTML links and fragments, the example's file hashes and documented semantic invariants. It is a documentation check, not a production package validator or mathematical proof checker.
 
+## Rust package CLI
+
+The experimental Rust CLI is a separate crate from the package library used by Android. Run it with `cargo run -p axiora-cli --bin axiora -- validate examples/prime-and-maximal`; it also supports `pack` and `inspect`. The Kotlin CLI remains the production implementation during the port.
+
 ## Rust math engine
 
 [Texlet](crates/texlet/Cargo.toml) lays out a small subset of LaTeX math using glyph IDs from a caller-provided font. [Texlet SVG](crates/texlet-svg/Cargo.toml) draws the layout as self-contained SVG paths. See the [notation roadmap](crates/texlet/ROADMAP.md) for supported and planned syntax.

@@ -12,6 +12,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "axiora-cli"
+version = "0.1.0"
+dependencies = [
+ "axiora-package",
+ "serde_json",
+]
+
+[[package]]
 name = "axiora-package"
 version = "0.1.0"
 dependencies = [
