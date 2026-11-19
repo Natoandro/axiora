@@ -60,7 +60,7 @@ fn invalid_cli_command_uses_usage_exit_code() {
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&output.stderr).starts_with("Usage: axiora"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Usage: axiora"));
 }
 
 #[test]
@@ -130,5 +130,53 @@ fn cli_handles_unicode_paths_pack_inspect_and_no_overwrite() {
         .unwrap();
     assert_eq!(refused.status.code(), Some(2));
     assert_eq!(fs::read(&output_path).unwrap(), original);
+    fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
+fn diff_compares_valid_content_and_archives() {
+    let directory = temp_dir();
+    let changed = directory.join("changed");
+    copy_tree(&source(), &changed);
+    let manifest_path = changed.join("manifest.json");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["title"] = "A revised title".into();
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_axiora"))
+        .args(["diff"])
+        .arg(source())
+        .arg(&changed)
+        .args(["--format", "json"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["changes"][0]["path"], "manifest.json/title");
+    assert_eq!(result["changes"][0]["after"], "A revised title");
+    let archive = directory.join("source.axp");
+    axiora_package::pack_directory(&source(), &archive, false).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_axiora"))
+        .arg("diff")
+        .arg(source())
+        .arg(&archive)
+        .args(["--format", "json"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["changes"].as_array().unwrap().len(), 0);
     fs::remove_dir_all(directory).unwrap();
 }

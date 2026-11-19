@@ -70,7 +70,18 @@ Validation and packaging read the unpacked fixture without rewriting it. Packagi
 
 ## Rust package CLI
 
-The experimental Rust CLI is a separate crate from the package library used by Android. Run it with `cargo run -p axiora-cli --bin axiora -- validate examples/prime-and-maximal`; it also supports `pack` and `inspect`. The Kotlin CLI remains the production implementation during the port.
+The experimental Rust CLI is a separate crate from the package library used by Android. The Kotlin CLI remains the production implementation during the port. For the Rust CLI, use `cargo run -p axiora-cli --bin axiora --` followed by a command, for example:
+
+```sh
+cargo run -p axiora-cli --bin axiora -- init my-course --id example.course --title "My course"
+cargo run -p axiora-cli --bin axiora -- add unit my-course --id example.course.second --title "Second lesson" --concept example.course.concept
+cargo run -p axiora-cli --bin axiora -- refresh my-course
+cargo run -p axiora-cli --bin axiora -- validate my-course --format json
+cargo run -p axiora-cli --bin axiora -- pack my-course --output my-course.axp
+cargo run -p axiora-cli --bin axiora -- diff my-course my-course.axp --format json
+```
+
+`init` creates a draft starter package; `add unit` creates an exposition template for an existing concept. Both accept `--dry-run` and refuse to replace existing destinations. Edit the generated JSON, then run `refresh` to update inventory sizes and hashes after changing payloads; it requires the content to otherwise validate and supports `--dry-run`. `guide` prints an offline Markdown authoring walkthrough; `schema` prints a machine-readable discovery summary, not a complete JSON Schema. `diff` compares validated directories or archives structurally; it ignores manifest inventory hashes and cannot judge mathematical meaning. `inspect` checks an archive. A learner-facing preview and author-supplied lesson tests are not implemented.
 
 ## Rust math engine
 

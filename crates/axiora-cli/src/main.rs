@@ -1,50 +1,134 @@
+mod diff;
+mod refresh;
+mod scaffold;
+
 use axiora_package::{inspect_archive, pack_directory, validate_directory};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+#[derive(Parser)]
+#[command(name = "axiora", version, about = "Author and package Axiora content")]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+#[derive(Clone, Copy, ValueEnum)]
+enum Format {
+    Text,
+    Json,
+}
+#[derive(Subcommand)]
+enum Command {
+    /// Create a draft starter package
+    Init {
+        directory: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        title: String,
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Add content to a package
+    Add {
+        #[command(subcommand)]
+        command: AddCommand,
+    },
+    /// Print a machine-readable schema discovery summary
+    Schema,
+    /// Print the Markdown authoring guide
+    Guide,
+    /// Recompute the manifest inventory for valid edited content
+    Refresh {
+        directory: PathBuf,
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Compare two validated packages or directories
+    Diff {
+        old: PathBuf,
+        new: PathBuf,
+        #[arg(long, value_enum, default_value = "text")]
+        format: Format,
+    },
+    /// Validate an unpacked package
+    Validate {
+        directory: PathBuf,
+        #[arg(long, value_enum, default_value = "text")]
+        format: Format,
+    },
+    /// Build an archive from a validated package
+    Pack {
+        directory: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long)]
+        overwrite: bool,
+    },
+    /// Inspect a package archive
+    Inspect { archive: PathBuf },
+}
+#[derive(Subcommand)]
+enum AddCommand {
+    /// Add a draft exposition unit for an existing concept
+    Unit {
+        directory: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        title: String,
+        #[arg(long)]
+        concept: String,
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
 fn main() -> ExitCode {
-    let code = run(std::env::args().skip(1).collect());
+    let cli = Cli::parse();
+    let code = match cli.command {
+        Command::Init {
+            directory,
+            id,
+            title,
+            dry_run,
+        } => scaffold::run_init(&directory, &id, &title, dry_run),
+        Command::Add {
+            command:
+                AddCommand::Unit {
+                    directory,
+                    id,
+                    title,
+                    concept,
+                    dry_run,
+                },
+        } => scaffold::run_add(&directory, &id, &title, &concept, dry_run),
+        Command::Schema => scaffold::run_schema(),
+        Command::Guide => {
+            print!("{}", include_str!("../AUTHORING.md"));
+            0
+        }
+        Command::Refresh { directory, dry_run } => refresh::run(&directory, dry_run),
+        Command::Diff { old, new, format } => diff::run(&old, &new, matches!(format, Format::Json)),
+        Command::Validate { directory, format } => run_validate(&directory, format),
+        Command::Pack {
+            directory,
+            output,
+            overwrite,
+        } => run_pack(&directory, &output, overwrite),
+        Command::Inspect { archive } => run_inspect(&archive),
+    };
     ExitCode::from(code as u8)
 }
-
-fn run(args: Vec<String>) -> i32 {
-    let Some(command) = args.first().map(String::as_str) else {
-        return usage();
-    };
-    match command {
-        "validate" => run_validate(&args[1..]),
-        "pack" => run_pack(&args[1..]),
-        "inspect" => run_inspect(&args[1..]),
-        _ => usage(),
-    }
-}
-
-fn run_validate(args: &[String]) -> i32 {
-    let mut format = "text";
-    let mut directory: Option<PathBuf> = None;
-    let mut index = 0;
-    while index < args.len() {
-        if args[index] == "--format" && index + 1 < args.len() {
-            index += 1;
-            format = &args[index];
-        } else if args[index].starts_with("--") || directory.is_some() {
-            return usage();
-        } else {
-            directory = Some(PathBuf::from(&args[index]));
-        }
-        index += 1;
-    }
-    let (Some(directory), true) = (directory, matches!(format, "text" | "json")) else {
-        return usage();
-    };
+fn run_validate(directory: &Path, format: Format) -> i32 {
     let root = normalize(&directory);
     if !root.is_dir() {
         eprintln!("Input directory does not exist: {}", root.display());
         return 2;
     }
     let result = validate_directory(&root);
-    if format == "json" {
+    if matches!(format, Format::Json) {
         print_validation_json(&result.valid, &result.diagnostics);
     } else if result.diagnostics.is_empty() {
         println!("Valid content: {}", root.display());
@@ -69,28 +153,8 @@ fn run_validate(args: &[String]) -> i32 {
     if result.valid { 0 } else { 1 }
 }
 
-fn run_pack(args: &[String]) -> i32 {
-    let mut source: Option<PathBuf> = None;
-    let mut output: Option<PathBuf> = None;
-    let mut overwrite = false;
-    let mut index = 0;
-    while index < args.len() {
-        match args[index].as_str() {
-            "--output" if index + 1 < args.len() => {
-                index += 1;
-                output = Some(PathBuf::from(&args[index]));
-            }
-            "--overwrite" => overwrite = true,
-            flag if flag.starts_with("--") => return usage(),
-            _ if source.is_none() => source = Some(PathBuf::from(&args[index])),
-            _ => return usage(),
-        }
-        index += 1;
-    }
-    let (Some(source), Some(output)) = (source, output) else {
-        return usage();
-    };
-    match pack_directory(&source, &output, overwrite) {
+fn run_pack(source: &Path, output: &Path, overwrite: bool) -> i32 {
+    match pack_directory(source, output, overwrite) {
         Ok(result) => {
             println!(
                 "Packed {}@{}: {}",
@@ -112,11 +176,8 @@ fn run_pack(args: &[String]) -> i32 {
     }
 }
 
-fn run_inspect(args: &[String]) -> i32 {
-    if args.len() != 1 || args[0].starts_with("--") {
-        return usage();
-    }
-    match inspect_archive(Path::new(&args[0])) {
+fn run_inspect(archive: &Path) -> i32 {
+    match inspect_archive(archive) {
         Ok(descriptor) => {
             println!(
                 "Valid package: {}@{}",
@@ -135,13 +196,6 @@ fn run_inspect(args: &[String]) -> i32 {
             1
         }
     }
-}
-
-fn usage() -> i32 {
-    eprintln!(
-        "Usage: axiora validate <directory> [--format text|json]\n       axiora pack <directory> --output <file.axp> [--overwrite]\n       axiora inspect <file.axp>"
-    );
-    2
 }
 
 fn normalize(path: &Path) -> PathBuf {
