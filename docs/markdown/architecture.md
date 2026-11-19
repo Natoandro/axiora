@@ -39,6 +39,8 @@ The content, validation, compiler, learning-core, and storage modules serve the 
 
 Initially use Kotlin/JVM libraries, with Android-compatible dependencies for shared modules. Do not begin with Kotlin Multiplatform, a web client, or a distributed service architecture. Revisit extraction after a second supported client exists.
 
+**Current package tooling transition:** the Android app uses a Rust JNI reader for archive inspection, loading, and stored-revision verification. Kotlin still constructs the typed content models and repeats validation; installation and learner storage remain Kotlin-side. The Kotlin CLI remains the production CLI while Rust host distribution and compatibility gates are completed. See the [implementation status](../../IMPLEMENTATION_STATUS.md#rust-package-tooling-port--in-progress).
+
 ## Core application flow
 
 The UI sends typed commands such as `SubmitChoice`, `SaveDraft`, `RevealHint`, `RevealSolution`, `RecordReflection`, and `Advance`. The domain engine returns a new session state plus facts to persist. Storage commits them in one transaction before the UI presents the next durable state.

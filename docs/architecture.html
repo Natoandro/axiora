@@ -95,6 +95,7 @@
 </tbody>
 </table></div>
 <p>Initially use Kotlin/JVM libraries, with Android-compatible dependencies for shared modules. Do not begin with Kotlin Multiplatform, a web client, or a distributed service architecture. Revisit extraction after a second supported client exists.</p>
+<p><strong>Current package tooling transition:</strong> the Android app uses a Rust JNI reader for archive inspection, loading, and stored-revision verification. Kotlin still constructs the typed content models and repeats validation; installation and learner storage remain Kotlin-side. The Kotlin CLI remains the production CLI while Rust host distribution and compatibility gates are completed. See the <a href="../IMPLEMENTATION_STATUS.md#rust-package-tooling-port--in-progress">implementation status</a>.</p>
 <h2 id="core-application-flow">Core application flow</h2>
 <p>The UI sends typed commands such as <code>SubmitChoice</code>, <code>SaveDraft</code>, <code>RevealHint</code>, <code>RevealSolution</code>, <code>RecordReflection</code>, and <code>Advance</code>. The domain engine returns a new session state plus facts to persist. Storage commits them in one transaction before the UI presents the next durable state.</p>
 <p>The engine receives its clock, identifier generator, content lookup, and review policy through interfaces. A repeated command ID must return the original result without creating duplicate attempts or moving twice. Unsupported commands in a state produce a recoverable domain error rather than silently skipping content.</p>

@@ -2,7 +2,7 @@
 
 Axiora is a proposed offline learning environment for proof-based mathematics. It pairs a native Android study application with a separate content toolchain. This handbook develops the idea into a bounded, implementable design.
 
-**Status: design baseline 0.1 · 16 November 2026.** Requirements below describe the intended product. The repository contains this handbook, an illustrative fixture, and JVM implementations of content validation, packaging, study, review, and learner storage. Phase 5 includes an installable Android vertical slice with device acceptance still open. See the [verified implementation record](../../IMPLEMENTATION_STATUS.md) for scope and device coverage.
+**Status: design baseline 0.1 · 16 November 2026.** Requirements below describe the intended product. The repository contains this handbook, an illustrative fixture, JVM implementations of content validation, packaging, study, review, and learner storage, plus an initial Rust package implementation used by Android through JNI. Phase 5 includes an installable Android vertical slice with device acceptance still open. See the [verified implementation record](../../IMPLEMENTATION_STATUS.md) for scope and device coverage.
 
 ## Start with the learning problem
 

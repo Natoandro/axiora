@@ -1,10 +1,10 @@
 # Axiora Android study app
 
-This local debug APK reuses the package reader, study engine, learner repository and framework SQLite driver. It uses native Android views, the system document picker and the shared Texlet Canvas renderer. The manifest declares no internet or shared-storage permissions, and Android automatic backup is disabled. Learner backup and restore are explicit document-picker operations.
+This local debug APK uses a Rust JNI package reader for archive inspection, loading, and stored-revision verification. Kotlin still builds the typed content models and repeats validation during this transition; installation, learner records, study behavior, and backup remain in Kotlin. The app uses native Android views, the system document picker, the framework SQLite driver, and the shared Texlet Canvas renderer. The manifest declares no internet or shared-storage permissions, and Android automatic backup is disabled. Learner backup and restore are explicit document-picker operations.
 
 ## Build and install
 
-Use JDK 17 or newer, Android SDK platform 33, Build Tools 36.1.0, and the NDK and Rust targets listed in the [math renderer instructions](../spikes/android-math/README.md). The build also needs unzip and a local math font with its notice. On a machine with populated dependency caches, Gradle and Cargo can run offline.
+Use JDK 17 or newer, Android SDK platform 33, Build Tools 36.1.0, and the NDK and Rust targets listed in the [math renderer instructions](../spikes/android-math/README.md). `android-app/build.sh` builds both the package-reader JNI library and the Texlet renderer for x86, x86_64, and arm64-v8a (the default ABI set). The build also needs unzip and a local math font with its notice. On a machine with populated dependency caches, Gradle and Cargo can run offline.
 
 ```sh
 export ANDROID_HOME=/path/to/Android/Sdk
@@ -15,7 +15,7 @@ adb install -r build/android-app/axiora.apk
 adb push build/android-demo/axiora-study-demo.axp build/android-demo/axiora-study-update.axp /sdcard/Download/
 ```
 
-The minimum declared version is Android 8.0 (API 26). The signed build includes x86, x86_64 and ARM64 libraries. See the [verification record](../IMPLEMENTATION_STATUS.md#phase-5--android-rendering-and-storage-compatibility) for tested devices and open checks. The debug signature is for local installation.
+The minimum declared version is Android 8.0 (API 26). The debug-signed build includes x86, x86_64, and ARM64 libraries. The Kotlin CLI remains the production CLI; Rust CLI host distribution and the full validator cutover are still in progress. See the [verification record](../IMPLEMENTATION_STATUS.md#phase-5--android-rendering-and-storage-compatibility) for tested devices and open checks. The debug signature is for local installation.
 
 ## Reproduce the study loop
 

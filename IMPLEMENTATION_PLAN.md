@@ -200,9 +200,9 @@ Work in this order:
 - Keep a phase acceptance record listing what passed, the environment, remaining defects, and any recorded departures. Unmet exit criteria keep the phase open unless an owner-approved deviation explicitly accepts the gap.
 - Continue the existing documentation freshness and link checks. Document new build and test commands only when they actually exist.
 
-## Planned package tooling port
+## Package tooling port — in progress
 
-See the [Rust package core and CLI port plan](RUST_PACKAGE_PORT_PLAN.md) for the compatibility gates and cutover sequence.
+The Rust package crate and CLI provide initial schema-0.1 validation and archive operations. Android uses the Rust JNI reader for archive inspection, loading, and stored-revision verification, while Kotlin still constructs typed content models and repeats validation. The Kotlin CLI remains the production CLI. Complete cross-implementation compatibility, JVM caller and host distribution decisions, Android device verification, and cutover before treating this work as complete. See the [implementation status](IMPLEMENTATION_STATUS.md#rust-package-tooling-port--in-progress) for verified progress and open gates.
 
 ## Next concrete change
 
