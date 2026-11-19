@@ -281,42 +281,46 @@ pub fn load_archive_in(path: &Path, scratch: &Path) -> Result<LoadedPackage, Pac
 /// Write already validated package files into an empty caller-owned staging directory.
 /// The caller remains responsible for removing the directory after consuming the data.
 pub fn write_loaded_package(package: &LoadedPackage, staging: &Path) -> Result<(), PackageError> {
-    let metadata = fs::symlink_metadata(staging)?;
-    if !metadata.is_dir() || metadata.file_type().is_symlink() {
-        return Err(PackageError::Invalid(
-            "Package staging path is not a private directory.".into(),
-        ));
-    }
-    if fs::read_dir(staging)?.next().is_some() {
-        return Err(PackageError::Invalid(
-            "Package staging directory is not empty.".into(),
-        ));
-    }
-    let mut files = BTreeMap::new();
-    files.insert(
-        "manifest.json".to_owned(),
-        package.manifest_bytes.as_slice(),
-    );
-    for (path, bytes) in &package.payloads {
-        files.insert(path.clone(), bytes.as_slice());
-    }
-    for (relative, bytes) in files {
-        if !crate::validation::safe_relative_path(&relative) {
-            return Err(PackageError::Invalid(format!(
-                "Unsafe package path: {relative}"
-            )));
+    package.write_to(staging)
+}
+
+impl LoadedPackage {
+    /// Write the package into an empty caller-owned staging directory.
+    pub fn write_to(&self, staging: &Path) -> Result<(), PackageError> {
+        let metadata = fs::symlink_metadata(staging)?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() {
+            return Err(PackageError::Invalid(
+                "Package staging path is not a private directory.".into(),
+            ));
         }
-        let target = staging.join(&relative);
-        if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent)?;
+        if fs::read_dir(staging)?.next().is_some() {
+            return Err(PackageError::Invalid(
+                "Package staging directory is not empty.".into(),
+            ));
         }
-        let mut output = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(target)?;
-        output.write_all(bytes)?;
+        let mut files = BTreeMap::new();
+        files.insert("manifest.json".to_owned(), self.manifest_bytes.as_slice());
+        for (path, bytes) in &self.payloads {
+            files.insert(path.clone(), bytes.as_slice());
+        }
+        for (relative, bytes) in files {
+            if !crate::validation::safe_relative_path(&relative) {
+                return Err(PackageError::Invalid(format!(
+                    "Unsafe package path: {relative}"
+                )));
+            }
+            let target = staging.join(&relative);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let mut output = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(target)?;
+            output.write_all(bytes)?;
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 mod pack;

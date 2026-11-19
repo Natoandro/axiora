@@ -110,9 +110,12 @@ pub fn validate_directory(root: &Path) -> ValidationResult {
             );
         }
     }
-    let units = parse_manifest_units(&mut validator, manifest.get("units"));
-    let files = parse_files(&mut validator, manifest.get("files"));
-    parse_review(&mut validator, manifest.get("review"));
+    let mut manifest_validator = ManifestValidator {
+        validator: &mut validator,
+    };
+    let units = manifest_validator.parse_manifest_units(manifest.get("units"));
+    let files = manifest_validator.parse_files(manifest.get("files"));
+    manifest_validator.parse_review(manifest.get("review"));
     duplicate_values(
         &mut validator,
         &concepts,
@@ -205,13 +208,14 @@ pub fn validate_directory(root: &Path) -> ValidationResult {
         let Some(document) = validator.read_json(&root, path, PAYLOAD_BYTES) else {
             continue;
         };
-        if let Some((actual_id, actual_version)) = validate_unit(
-            &mut validator,
-            &document,
-            path,
-            &concept_map,
-            &mut used_capabilities,
-        ) {
+        if let Some((actual_id, actual_version)) = (UnitValidator {
+            validator: &mut validator,
+            file: path,
+            concepts: &concept_map,
+            used_capabilities: &mut used_capabilities,
+        })
+        .validate(&document)
+        {
             if !seen_unit_ids.insert(actual_id.clone()) {
                 validator.error(
                     "AXC203",
@@ -373,13 +377,13 @@ fn duplicate_values(
 }
 
 mod manifest;
-use manifest::{collect_payload_files, parse_files, parse_manifest_units, parse_review};
+use manifest::{ManifestValidator, collect_payload_files};
 
 mod concepts;
 mod units;
 
 use concepts::{parse_concept_document, validate_concept_relations};
-use units::validate_unit;
+use units::UnitValidator;
 
 #[cfg(test)]
 #[path = "tests.rs"]

@@ -1,4 +1,4 @@
-use axiora_package::{PackageDescriptor, load_archive_in, write_loaded_package};
+use axiora_package::{PackageDescriptor, load_archive_in};
 use serde_json::{Value, json};
 use std::ffi::{CStr, c_char};
 use std::mem;
@@ -82,7 +82,9 @@ pub extern "C" fn axiora_package_load_to_directory_json(
         let path = path_from_c(path)?;
         let staging = path_from_c(staging)?;
         let package = load_archive_in(&path, &staging).map_err(|error| error.to_string())?;
-        write_loaded_package(&package, &staging).map_err(|error| error.to_string())?;
+        package
+            .write_to(&staging)
+            .map_err(|error| error.to_string())?;
         Ok(json!({
             "ok": true,
             "descriptor": descriptor_json(package.descriptor),
