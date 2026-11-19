@@ -19,8 +19,17 @@ internal class RustPackageArchiveReader(
         System.loadLibrary("axiora_package")
     }
 
-    override fun inspect(archive: Path): PackageRevisionDescriptor =
-        descriptor(response(nativeInspect(archive.toAbsolutePath().normalize().toString())))
+    override fun inspect(archive: Path): PackageRevisionDescriptor {
+        Files.createDirectories(cacheDirectory)
+        return descriptor(
+            response(
+                nativeInspect(
+                    archive.toAbsolutePath().normalize().toString(),
+                    cacheDirectory.toAbsolutePath().normalize().toString(),
+                ),
+            ),
+        )
+    }
 
     override fun <T> load(
         archive: Path,
@@ -69,7 +78,7 @@ internal class RustPackageArchiveReader(
             uncompressedBytes = node.path("uncompressed_bytes").asLong(),
         )
 
-    private external fun nativeInspect(path: String): ByteArray
+    private external fun nativeInspect(path: String, scratch: String): ByteArray
 
     private external fun nativeLoad(path: String, staging: String): ByteArray
 }

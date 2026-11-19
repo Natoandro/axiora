@@ -8,7 +8,7 @@ typedef struct {
     size_t capacity;
 } AxioraBuffer;
 
-extern AxioraBuffer axiora_package_inspect_json(const char *path);
+extern AxioraBuffer axiora_package_inspect_json(const char *path, const char *scratch);
 extern AxioraBuffer axiora_package_load_to_directory_json(const char *path, const char *staging);
 extern void axiora_package_free_buffer(AxioraBuffer buffer);
 
@@ -24,20 +24,9 @@ static jbyteArray copy_result(JNIEnv *env, AxioraBuffer buffer) {
     return result;
 }
 
-static jbyteArray invoke(JNIEnv *env, jstring path, AxioraBuffer (*operation)(const char *)) {
-    if (path == NULL) {
-        return NULL;
-    }
-    const char *utf8_path = (*env)->GetStringUTFChars(env, path, NULL);
-    if (utf8_path == NULL) {
-        return NULL;
-    }
-    AxioraBuffer buffer = operation(utf8_path);
-    (*env)->ReleaseStringUTFChars(env, path, utf8_path);
-    return copy_result(env, buffer);
-}
-
-static jbyteArray invoke_load(JNIEnv *env, jstring path, jstring staging) {
+static jbyteArray invoke(
+    JNIEnv *env, jstring path, jstring staging,
+    AxioraBuffer (*operation)(const char *, const char *)) {
     if (path == NULL || staging == NULL) {
         return NULL;
     }
@@ -50,7 +39,7 @@ static jbyteArray invoke_load(JNIEnv *env, jstring path, jstring staging) {
         (*env)->ReleaseStringUTFChars(env, path, utf8_path);
         return NULL;
     }
-    AxioraBuffer buffer = axiora_package_load_to_directory_json(utf8_path, utf8_staging);
+    AxioraBuffer buffer = operation(utf8_path, utf8_staging);
     (*env)->ReleaseStringUTFChars(env, staging, utf8_staging);
     (*env)->ReleaseStringUTFChars(env, path, utf8_path);
     return copy_result(env, buffer);
@@ -58,14 +47,14 @@ static jbyteArray invoke_load(JNIEnv *env, jstring path, jstring staging) {
 
 JNIEXPORT jbyteArray JNICALL
 Java_mg_abela_axiora_app_RustPackageArchiveReader_nativeInspect(
-    JNIEnv *env, jobject instance, jstring path) {
+    JNIEnv *env, jobject instance, jstring path, jstring scratch) {
     (void)instance;
-    return invoke(env, path, axiora_package_inspect_json);
+    return invoke(env, path, scratch, axiora_package_inspect_json);
 }
 
 JNIEXPORT jbyteArray JNICALL
 Java_mg_abela_axiora_app_RustPackageArchiveReader_nativeLoad(
     JNIEnv *env, jobject instance, jstring path, jstring staging) {
     (void)instance;
-    return invoke_load(env, path, staging);
+    return invoke(env, path, staging, axiora_package_load_to_directory_json);
 }

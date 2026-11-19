@@ -44,6 +44,11 @@ pub fn inspect_archive(path: &Path) -> Result<PackageDescriptor, PackageError> {
 }
 
 pub fn load_archive(path: &Path) -> Result<LoadedPackage, PackageError> {
+    load_archive_in(path, &std::env::temp_dir())
+}
+
+/// Validate and load an archive using a caller-provided scratch directory.
+pub fn load_archive_in(path: &Path, scratch: &Path) -> Result<LoadedPackage, PackageError> {
     let metadata = fs::symlink_metadata(path)?;
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return Err(PackageError::Invalid(
@@ -227,7 +232,7 @@ pub fn load_archive(path: &Path) -> Result<LoadedPackage, PackageError> {
             .map_err(|diagnostic| PackageError::Invalid(diagnostic.message))?;
     }
 
-    let staging = TempDir::new("axiora-load")?;
+    let staging = TempDir::new_in("axiora-load", scratch)?;
     fs::write(staging.path().join("manifest.json"), &manifest_bytes)?;
     for (name, data) in &payloads {
         let target = staging.path().join(name);
@@ -780,8 +785,12 @@ struct TempDir {
     path: PathBuf,
 }
 impl TempDir {
+    #[cfg(test)]
     fn new(prefix: &str) -> Result<Self, PackageError> {
-        let base = std::env::temp_dir();
+        Self::new_in(prefix, &std::env::temp_dir())
+    }
+
+    fn new_in(prefix: &str, base: &Path) -> Result<Self, PackageError> {
         for _ in 0..100 {
             let id = TEMP_ID.fetch_add(1, Ordering::Relaxed);
             let path = base.join(format!("{prefix}-{}-{id}", std::process::id()));

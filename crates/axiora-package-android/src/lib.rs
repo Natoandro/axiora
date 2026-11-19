@@ -1,4 +1,4 @@
-use axiora_package::{PackageDescriptor, inspect_archive, load_archive, write_loaded_package};
+use axiora_package::{PackageDescriptor, load_archive_in, write_loaded_package};
 use serde_json::{Value, json};
 use std::ffi::{CStr, c_char};
 use std::mem;
@@ -58,13 +58,17 @@ fn response(operation: impl FnOnce() -> Result<Value, String>) -> AxioraBuffer {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn axiora_package_inspect_json(path: *const c_char) -> AxioraBuffer {
+pub extern "C" fn axiora_package_inspect_json(
+    path: *const c_char,
+    scratch: *const c_char,
+) -> AxioraBuffer {
     response(|| {
         let path = path_from_c(path)?;
-        let descriptor = inspect_archive(&path).map_err(|error| error.to_string())?;
+        let scratch = path_from_c(scratch)?;
+        let package = load_archive_in(&path, &scratch).map_err(|error| error.to_string())?;
         Ok(json!({
             "ok": true,
-            "descriptor": descriptor_json(descriptor),
+            "descriptor": descriptor_json(package.descriptor),
         }))
     })
 }
@@ -76,8 +80,8 @@ pub extern "C" fn axiora_package_load_to_directory_json(
 ) -> AxioraBuffer {
     response(|| {
         let path = path_from_c(path)?;
-        let package = load_archive(&path).map_err(|error| error.to_string())?;
         let staging = path_from_c(staging)?;
+        let package = load_archive_in(&path, &staging).map_err(|error| error.to_string())?;
         write_loaded_package(&package, &staging).map_err(|error| error.to_string())?;
         Ok(json!({
             "ok": true,
@@ -122,7 +126,8 @@ mod tests {
     #[test]
     fn inspect_ffi_returns_descriptor_and_owned_buffer() {
         let path = CString::new(package_path().to_string_lossy().as_bytes()).unwrap();
-        let result = decode(axiora_package_inspect_json(path.as_ptr()));
+        let scratch = CString::new(std::env::temp_dir().to_string_lossy().as_bytes()).unwrap();
+        let result = decode(axiora_package_inspect_json(path.as_ptr(), scratch.as_ptr()));
         assert_eq!(result["ok"], true);
         assert_eq!(result["descriptor"]["package_id"], "axiora.ca.first-slice");
         assert_eq!(result["descriptor"]["payload_count"], 4);

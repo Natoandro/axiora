@@ -14,7 +14,8 @@ use std::path::{Component, Path};
 
 mod archive;
 pub use archive::{
-    BuildResult, LoadedPackage, inspect_archive, load_archive, pack_directory, write_loaded_package,
+    BuildResult, LoadedPackage, inspect_archive, load_archive, load_archive_in, pack_directory,
+    write_loaded_package,
 };
 
 pub const ARCHIVE_BYTES: u64 = 20 * 1024 * 1024;
