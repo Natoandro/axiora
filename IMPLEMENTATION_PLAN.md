@@ -200,6 +200,10 @@ Work in this order:
 - Keep a phase acceptance record listing what passed, the environment, remaining defects, and any recorded departures. Unmet exit criteria keep the phase open unless an owner-approved deviation explicitly accepts the gap.
 - Continue the existing documentation freshness and link checks. Document new build and test commands only when they actually exist.
 
+## Planned package tooling port
+
+See the [Rust package core and CLI port plan](RUST_PACKAGE_PORT_PLAN.md) for the compatibility gates and cutover sequence.
+
 ## Next concrete change
 
 Proceed to Phase 6: complete scoped mathematical and teaching review of the three-unit course slice, then prepare a local pilot plan. Keep the Phase 5 device gaps visible and resolve them before an external pilot or release. Do not describe hashes as authenticated authorship.

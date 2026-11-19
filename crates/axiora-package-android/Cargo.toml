@@ -1,0 +1,12 @@
+[package]
+name = "axiora-package-android"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+axiora-package = { path = "../axiora-package" }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }

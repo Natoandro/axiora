@@ -26,7 +26,6 @@ import mg.abela.axiora.storage.PackageInstaller
 import mg.abela.axiora.storage.SqliteLearnerStore
 import mg.abela.axiora.storage.StudyRepository
 import mg.abela.axiora.storage.android.AndroidLearnerSqliteDriver
-import mg.abela.axiora.validation.PackageArchiveReader
 import mg.abela.axiora.validation.PackageLimits
 import mg.abela.axiora.validation.PackageRevisionDescriptor
 import java.io.InputStream
@@ -100,11 +99,11 @@ internal class StudyWorkspace(
     private val context: Context,
 ) {
     private val mapper = ObjectMapper()
-    private val reader = PackageArchiveReader()
+    private val cacheDirectory = context.cacheDir.toPath()
+    private val reader = RustPackageArchiveReader(cacheDirectory)
     private val driver = AndroidLearnerSqliteDriver(context.getDatabasePath("learner.db"))
-    val store = SqliteLearnerStore(driver)
-    private val installer = PackageInstaller(context.filesDir.toPath(), store)
-    private val incoming = context.cacheDir.toPath().resolve("incoming.axp")
+    val store = SqliteLearnerStore(driver, packageReader = reader)
+    private val installer = PackageInstaller(context.filesDir.toPath(), store, reader = reader)
     private var resolved: Pair<InstalledPackage, Course>? = null
     private val lookup = UnitLookup { revision -> unit(revision) ?.model }
     private val engine = StudyEngine(lookup, zone = ZoneSource { ZoneId.systemDefault().rules.getOffset(it) })
@@ -128,7 +127,20 @@ internal class StudyWorkspace(
 
     init {
         installer.reconcile()
-        Files.deleteIfExists(incoming)
+        Files.list(cacheDirectory).use { paths ->
+            paths.filter {
+                it.fileName.toString().startsWith("axiora-incoming-") ||
+                    it.fileName.toString().startsWith("axiora-package-")
+            }.forEach { path ->
+                if (Files.isDirectory(path) && !Files.isSymbolicLink(path)) {
+                    Files.walk(path).use { nested ->
+                        nested.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+                    }
+                } else {
+                    Files.deleteIfExists(path)
+                }
+            }
+        }
     }
 
     private fun readCourse(path: Path): Course =
@@ -151,18 +163,19 @@ internal class StudyWorkspace(
         }
 
     fun preview(uri: Uri): ImportPreview {
+        val staged = Files.createTempFile(cacheDirectory, "axiora-incoming-", ".axp")
         try {
-            Files.newOutputStream(incoming).use { output -> fromUri(uri) { copyLimited(it, output, PackageLimits.ARCHIVE_BYTES) } }
-            val course = readCourse(incoming)
+            Files.newOutputStream(staged).use { output -> fromUri(uri) { copyLimited(it, output, PackageLimits.ARCHIVE_BYTES) } }
+            val course = readCourse(staged)
             val existing = store.packageRevisions().filter { it.packageId == course.descriptor.packageId }
             require(
                 existing.none { it.packageVersion == course.descriptor.version && it.manifestSha256 != course.descriptor.manifestSha256 },
             ) {
                 "This course ID and version already belong to different course content."
             }
-            return ImportPreview(incoming, course, existing)
+            return ImportPreview(staged, course, existing)
         } catch (error: Exception) {
-            Files.deleteIfExists(incoming)
+            Files.deleteIfExists(staged)
             throw error
         }
     }

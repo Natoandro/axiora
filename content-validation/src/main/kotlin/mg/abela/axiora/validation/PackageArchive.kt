@@ -201,13 +201,22 @@ class PackageArchiveWriter(
 }
 
 /** Bounded archive inspector. It stages only after central-directory checks and streaming limits pass. */
+interface PackageArchiveAccess {
+    fun inspect(archive: Path): PackageRevisionDescriptor
+
+    fun <T> load(
+        archive: Path,
+        consume: (PackageRevisionDescriptor, Path, ValidationResult) -> T,
+    ): T
+}
+
 class PackageArchiveReader(
     private val validator: ContentValidator = ContentValidator(),
-) {
-    fun inspect(archive: Path): PackageRevisionDescriptor = load(archive) { descriptor, _, _ -> descriptor }
+) : PackageArchiveAccess {
+    override fun inspect(archive: Path): PackageRevisionDescriptor = load(archive) { descriptor, _, _ -> descriptor }
 
     /** Staging exists only while the callback runs, after all archive validation succeeds. */
-    fun <T> load(
+    override fun <T> load(
         archive: Path,
         consume: (PackageRevisionDescriptor, Path, ValidationResult) -> T,
     ): T {

@@ -1,0 +1,4 @@
+Valid package: axiora.ca.first-slice@0.1.0
+Manifest SHA-256: 8fdd449a61de27a54467c45eda95b6fc366cc7cbe4ceb0b95c5670342706ebad
+Archive SHA-256: c75ebf22bb59a3f8a655e3df7fa9dd2e9025d4717a67474e430c7ddf8f53cd7f
+Payload files: 4; uncompressed bytes: 11353

@@ -3,6 +3,7 @@ package mg.abela.axiora.storage
 import mg.abela.axiora.content.Revision
 import mg.abela.axiora.content.StableId
 import mg.abela.axiora.learning.UnitRevisionRef
+import mg.abela.axiora.validation.PackageArchiveAccess
 import mg.abela.axiora.validation.PackageArchiveReader
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -11,6 +12,7 @@ import java.nio.file.Paths
 class SqliteLearnerStore(
     private val driver: LearnerSqliteDriver,
     private val fault: (String) -> Unit = {},
+    private val packageReader: PackageArchiveAccess = PackageArchiveReader(),
 ) {
     constructor(database: Path, fault: (String) -> Unit = {}) : this(JdbcLearnerSqliteDriver(database), fault)
 
@@ -347,7 +349,7 @@ class SqliteLearnerStore(
         }
         return packageRevisions().filter { installed ->
             !runCatching {
-                val descriptor = PackageArchiveReader().inspect(Paths.get(installed.contentLocation))
+                val descriptor = packageReader.inspect(Paths.get(installed.contentLocation))
                 descriptor.packageId == installed.packageId && descriptor.version == installed.packageVersion &&
                     descriptor.manifestSha256 == installed.manifestSha256
             }.getOrDefault(false)

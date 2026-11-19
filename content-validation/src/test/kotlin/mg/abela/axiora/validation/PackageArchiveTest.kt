@@ -40,6 +40,26 @@ class PackageArchiveTest {
         }
     }
 
+    @Test
+    fun `Kotlin reader opens the Rust-produced compatibility archive`() {
+        val rustArchive =
+            Path
+                .of("../crates/axiora-package/tests/fixtures/rust-reference/prime-and-maximal.axp")
+                .toAbsolutePath()
+                .normalize()
+        val descriptor = PackageArchiveReader().inspect(rustArchive)
+        assertEquals("axiora.ca.first-slice", descriptor.packageId)
+        assertEquals("0.1.0", descriptor.version)
+        assertEquals(
+            "8fdd449a61de27a54467c45eda95b6fc366cc7cbe4ceb0b95c5670342706ebad",
+            descriptor.manifestSha256,
+        )
+        assertEquals(
+            "650159843d7e7d8aad649695eb54a0b3255182df59972a1364525530935dec4a",
+            descriptor.archiveSha256,
+        )
+    }
+
     @Test fun `pack refuses existing output unless overwrite is explicit`() {
         val directory = Files.createTempDirectory("axiora-overwrite-test")
         try {

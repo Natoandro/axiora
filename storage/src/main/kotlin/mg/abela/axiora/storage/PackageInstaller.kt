@@ -1,5 +1,6 @@
 package mg.abela.axiora.storage
 
+import mg.abela.axiora.validation.PackageArchiveAccess
 import mg.abela.axiora.validation.PackageArchiveReader
 import mg.abela.axiora.validation.PackageLimits
 import mg.abela.axiora.validation.PackageRevisionDescriptor
@@ -13,7 +14,7 @@ import java.time.Instant
 class PackageInstaller(
     private val library: Path,
     private val store: SqliteLearnerStore,
-    private val reader: PackageArchiveReader = PackageArchiveReader(),
+    private val reader: PackageArchiveAccess = PackageArchiveReader(),
     private val now: () -> Instant = Instant::now,
     private val fault: (String) -> Unit = {},
 ) {
