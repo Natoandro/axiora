@@ -41,6 +41,8 @@ Follow [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the phased implement
 
 ## Implementation boundaries
 
+Review source files at around 400 lines for opportunities to separate responsibilities. At around 600 lines, look more actively for a clear split. These are guidelines, not hard limits: keep cohesive code together, and split shorter files when they mix unrelated responsibilities.
+
 The proposed architecture uses Kotlin domain modules, an Android client, and a JVM CLI. No dependency versions are pinned for that future code. Verify official documentation when selecting libraries or implementing changing APIs. No need to research libraries for changes confined to product prose.
 
 Domain logic must not depend on Android UI, SQLite, network APIs, or an LLM provider. Adapters own those dependencies. Prefer deterministic, typed evaluators with explicit supported domains. Unknown or unsupported input yields `unassessed`, not a guessed verdict.
