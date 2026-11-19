@@ -56,7 +56,7 @@ internal abstract class StudyActivityLessonUi : StudyActivityLibraryUi() {
         if (session.status == SessionStatus.COMPLETED) {
             heading("Unit complete")
             content(text.path("summary_md").asText())
-            action("Return to library", ::home)
+            action("Return to library", ::libraryScreen)
             return
         }
         val objectives =
