@@ -1,3 +1,4 @@
+use super::zip_directory::{read_u16, read_u32};
 use super::*;
 use std::io::Cursor;
 
